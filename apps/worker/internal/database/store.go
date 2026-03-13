@@ -44,9 +44,9 @@ func NewStore(connStr string, redisCache *cache.RedisCache) (*Store, error) {
 	return &Store{db: db, cache: redisCache, healthErrLog: make(map[int]time.Time)}, nil
 }
 
-func (s *Store) BatchIsNew(itemIDs []int64) map[int64]bool {
+func (s *Store) BatchIsNew(monitorID int, itemIDs []int64) map[int64]bool {
 	if s.cache != nil {
-		result, err := s.cache.BatchIsNew(itemIDs)
+		result, err := s.cache.BatchIsNew(monitorID, itemIDs)
 		if err == nil {
 			return result
 		}
@@ -62,13 +62,14 @@ func (s *Store) BatchIsNew(itemIDs []int64) map[int64]bool {
 		return result
 	}
 
-	args := make([]interface{}, len(itemIDs))
+	args := make([]interface{}, len(itemIDs)+1)
+	args[0] = monitorID
 	placeholders := make([]string, len(itemIDs))
 	for i, id := range itemIDs {
-		args[i] = id
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i+1] = id
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
 	}
-	query := fmt.Sprintf("SELECT id FROM items WHERE id IN (%s)", strings.Join(placeholders, ","))
+	query := fmt.Sprintf("SELECT id FROM items WHERE monitor_id = $1 AND id IN (%s)", strings.Join(placeholders, ","))
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		log.Printf("db BatchIsNew query error: %v", err)
@@ -108,7 +109,7 @@ func (s *Store) SaveItem(item model.Item) error {
 	_, err := s.db.Exec(`
 		INSERT INTO items (id, monitor_id, title, brand, price, total_price, size, condition, url, image_url, extra_images, location, rating, seller_id, found_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-		ON CONFLICT (id) DO UPDATE SET 
+		ON CONFLICT (id, monitor_id) DO UPDATE SET
 			total_price = COALESCE(EXCLUDED.total_price, items.total_price),
 			brand = COALESCE(EXCLUDED.brand, items.brand),
 			extra_images = COALESCE(EXCLUDED.extra_images, items.extra_images)`,
@@ -120,8 +121,8 @@ func (s *Store) SaveItem(item model.Item) error {
 	}
 
 	if s.cache != nil {
-		if err := s.cache.MarkAsSeen(item.ID); err != nil {
-			log.Printf("redis mark-seen failed for %d: %v", item.ID, err)
+		if err := s.cache.MarkAsSeen(item.MonitorID, item.ID); err != nil {
+			log.Printf("redis mark-seen failed for %d:%d: %v", item.MonitorID, item.ID, err)
 		}
 	}
 
@@ -151,7 +152,7 @@ func (s *Store) BatchSaveItems(items []model.Item) error {
 	stmt, err := tx.Prepare(`
 		INSERT INTO items (id, monitor_id, title, brand, price, total_price, size, condition, url, image_url, extra_images, location, rating, seller_id, found_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-		ON CONFLICT (id) DO UPDATE SET 
+		ON CONFLICT (id, monitor_id) DO UPDATE SET 
 			total_price = COALESCE(EXCLUDED.total_price, items.total_price),
 			brand = COALESCE(EXCLUDED.brand, items.brand),
 			extra_images = COALESCE(EXCLUDED.extra_images, items.extra_images)`)
@@ -173,11 +174,12 @@ func (s *Store) BatchSaveItems(items []model.Item) error {
 	}
 
 	if s.cache != nil {
+		monitorID := items[0].MonitorID
 		ids := make([]int64, len(items))
 		for i, item := range items {
 			ids[i] = item.ID
 		}
-		if err := s.cache.BatchMarkAsSeen(ids); err != nil {
+		if err := s.cache.BatchMarkAsSeen(monitorID, ids); err != nil {
 			log.Printf("redis batch mark-seen failed: %v", err)
 		}
 	}
@@ -185,9 +187,9 @@ func (s *Store) BatchSaveItems(items []model.Item) error {
 	return nil
 }
 
-func (s *Store) MarkItemsSeen(ids []int64) {
+func (s *Store) MarkItemsSeen(monitorID int, ids []int64) {
 	if s.cache != nil {
-		if err := s.cache.BatchMarkAsSeen(ids); err != nil {
+		if err := s.cache.BatchMarkAsSeen(monitorID, ids); err != nil {
 			log.Printf("redis mark-seen failed: %v", err)
 		}
 	}

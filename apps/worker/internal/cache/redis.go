@@ -79,7 +79,7 @@ func (r *RedisCache) writeWithRetry(op func() error) error {
 	return err
 }
 
-func (r *RedisCache) BatchIsNew(itemIDs []int64) (map[int64]bool, error) {
+func (r *RedisCache) BatchIsNew(monitorID int, itemIDs []int64) (map[int64]bool, error) {
 	if len(itemIDs) == 0 {
 		return make(map[int64]bool), nil
 	}
@@ -88,7 +88,7 @@ func (r *RedisCache) BatchIsNew(itemIDs []int64) (map[int64]bool, error) {
 	cmds := make(map[int64]*redis.IntCmd, len(itemIDs))
 
 	for _, id := range itemIDs {
-		cmds[id] = pipe.Exists(r.ctx, fmt.Sprintf("item:seen:%d", id))
+		cmds[id] = pipe.Exists(r.ctx, fmt.Sprintf("item:seen:%d:%d", monitorID, id))
 	}
 
 	if _, err := pipe.Exec(r.ctx); err != nil && err != redis.Nil {
@@ -103,20 +103,20 @@ func (r *RedisCache) BatchIsNew(itemIDs []int64) (map[int64]bool, error) {
 	return result, nil
 }
 
-func (r *RedisCache) MarkAsSeen(itemID int64) error {
+func (r *RedisCache) MarkAsSeen(monitorID int, itemID int64) error {
 	return r.writeWithRetry(func() error {
-		return r.client.Set(r.ctx, fmt.Sprintf("item:seen:%d", itemID), "1", 30*24*time.Hour).Err()
+		return r.client.Set(r.ctx, fmt.Sprintf("item:seen:%d:%d", monitorID, itemID), "1", 30*24*time.Hour).Err()
 	})
 }
 
-func (r *RedisCache) BatchMarkAsSeen(itemIDs []int64) error {
+func (r *RedisCache) BatchMarkAsSeen(monitorID int, itemIDs []int64) error {
 	if len(itemIDs) == 0 {
 		return nil
 	}
 	return r.writeWithRetry(func() error {
 		pipe := r.client.Pipeline()
 		for _, id := range itemIDs {
-			pipe.Set(r.ctx, fmt.Sprintf("item:seen:%d", id), "1", 30*24*time.Hour)
+			pipe.Set(r.ctx, fmt.Sprintf("item:seen:%d:%d", monitorID, id), "1", 30*24*time.Hour)
 		}
 		_, err := pipe.Exec(r.ctx)
 		if err != nil && err != redis.Nil {

@@ -291,7 +291,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			ids[i] = item.ID
 		}
 
-		newMap := e.db.BatchIsNew(ids)
+		newMap := e.db.BatchIsNew(m.ID, ids)
 
 		var newItems []model.VintedItem
 		for _, item := range items {
@@ -313,7 +313,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 		for i, item := range newItems {
 			newIDs[i] = item.ID
 		}
-		e.db.MarkItemsSeen(newIDs)
+		e.db.MarkItemsSeen(m.ID, newIDs)
 
 		builtItems := e.buildItems(m, newItems)
 
