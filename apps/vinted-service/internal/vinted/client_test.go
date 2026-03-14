@@ -1,0 +1,157 @@
+package vinted
+
+import (
+	"testing"
+
+	"vintrack-vinted/internal/session"
+)
+
+func TestParseUserIDFromJWT_Valid(t *testing.T) {
+	// JWT with payload: {"sub": "12345"}
+	// base64url("{"sub":"12345"}") = eyJzdWIiOiIxMjM0NSJ9
+	token := "header.eyJzdWIiOiIxMjM0NSJ9.signature"
+
+	userID, userIDStr := parseUserIDFromJWT(token)
+	if userID != 12345 {
+		t.Errorf("userID = %d, want 12345", userID)
+	}
+	if userIDStr != "12345" {
+		t.Errorf("userIDStr = %q, want %q", userIDStr, "12345")
+	}
+}
+
+func TestParseUserIDFromJWT_InvalidToken(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{"empty", ""},
+		{"no dots", "nodots"},
+		{"one dot", "one.dot"},
+		{"invalid base64", "a.!!!invalid!!!.c"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userID, _ := parseUserIDFromJWT(tt.token)
+			if userID != 0 {
+				t.Errorf("parseUserIDFromJWT(%q) = %d, want 0", tt.token, userID)
+			}
+		})
+	}
+}
+
+func TestParseUserIDFromJWT_NoSubClaim(t *testing.T) {
+	// JWT with payload: {"name": "test"} (no sub)
+	// base64url({"name":"test"}) = eyJuYW1lIjoidGVzdCJ9
+	token := "header.eyJuYW1lIjoidGVzdCJ9.signature"
+
+	userID, _ := parseUserIDFromJWT(token)
+	if userID != 0 {
+		t.Errorf("userID = %d, want 0 for missing sub claim", userID)
+	}
+}
+
+func TestLocale(t *testing.T) {
+	tests := []struct {
+		domain   string
+		expected string
+	}{
+		{"www.vinted.de", "de-DE"},
+		{"www.vinted.fr", "fr-FR"},
+		{"www.vinted.es", "es-ES"},
+		{"www.vinted.it", "it-IT"},
+		{"www.vinted.nl", "nl-NL"},
+		{"www.vinted.pl", "pl-PL"},
+		{"www.vinted.co.uk", "en-GB"},
+		{"www.vinted.com", "en-US"},
+		{"www.vinted.xyz", "de-DE"}, // fallback
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.domain, func(t *testing.T) {
+			c := &Client{session: &session.VintedSession{Domain: tt.domain}}
+			got := c.locale()
+			if got != tt.expected {
+				t.Errorf("locale() for %q = %q, want %q", tt.domain, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		maxLen   int
+		expected string
+	}{
+		{"short string", "hello", 10, "hello"},
+		{"exact length", "hello", 5, "hello"},
+		{"truncated", "hello world", 5, "hello..."},
+		{"empty", "", 5, ""},
+		{"one char max", "hello", 1, "h..."},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncate(tt.input, tt.maxLen)
+			if got != tt.expected {
+				t.Errorf("truncate(%q, %d) = %q, want %q", tt.input, tt.maxLen, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMinInt(t *testing.T) {
+	tests := []struct {
+		a, b, expected int
+	}{
+		{1, 2, 1},
+		{5, 3, 3},
+		{0, 0, 0},
+		{-1, 1, -1},
+	}
+
+	for _, tt := range tests {
+		got := minInt(tt.a, tt.b)
+		if got != tt.expected {
+			t.Errorf("minInt(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.expected)
+		}
+	}
+}
+
+func TestGetAccessToken(t *testing.T) {
+	sess := &session.VintedSession{AccessToken: "test-token-123"}
+	c := &Client{session: sess}
+
+	if got := c.GetAccessToken(); got != "test-token-123" {
+		t.Errorf("GetAccessToken() = %q, want %q", got, "test-token-123")
+	}
+}
+
+func TestGetDomain(t *testing.T) {
+	sess := &session.VintedSession{Domain: "www.vinted.de"}
+	c := &Client{session: sess}
+
+	if got := c.GetDomain(); got != "www.vinted.de" {
+		t.Errorf("GetDomain() = %q, want %q", got, "www.vinted.de")
+	}
+}
+
+func TestGetSession(t *testing.T) {
+	sess := &session.VintedSession{
+		UserID:      "user-1",
+		AccessToken: "token",
+		Domain:      "www.vinted.fr",
+	}
+	c := &Client{session: sess}
+
+	got := c.GetSession()
+	if got.UserID != "user-1" {
+		t.Errorf("GetSession().UserID = %q, want %q", got.UserID, "user-1")
+	}
+	if got.Domain != "www.vinted.fr" {
+		t.Errorf("GetSession().Domain = %q, want %q", got.Domain, "www.vinted.fr")
+	}
+}
