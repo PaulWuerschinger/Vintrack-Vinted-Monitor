@@ -300,7 +300,9 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			}
 		}
 
-		fmt.Printf("\r[%d] #%d | %d items | %d new | %dms", m.ID, checks, len(items), len(newItems), time.Since(cycleStart).Milliseconds())
+		if len(newItems) > 0 {
+			log.Printf("[%d] #%d | %d items | %d new | %dms", m.ID, checks, len(items), len(newItems), time.Since(cycleStart).Milliseconds())
+		}
 
 		if len(newItems) == 0 {
 			if remaining := intervalDuration - time.Since(cycleStart); remaining > 0 {
@@ -327,10 +329,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 		}
 
 		for _, item := range builtItems {
-			fmt.Printf("\n  NEW [%d]: %s (%s) [%s]", m.ID, item.Title, item.Price, item.Size)
+			log.Printf("[%d] NEW: %s (%s) [%s]", m.ID, item.Title, item.Price, item.Size)
 		}
-		fmt.Println()
-
 		go func(ctx context.Context, items []model.Item, vItems []model.VintedItem, monitorID int, webhook string, webhookActive bool, query string, ps string, scr *HTMLScraper, dom string) {
 			if e.enrichSeller && scr != nil {
 				sem := make(chan struct{}, 10)
