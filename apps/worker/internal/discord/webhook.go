@@ -96,7 +96,6 @@ func SendWebhook(webhookURL string, item model.Item, query string, proxySource s
 func buildFields(item model.Item) []map[string]interface{} {
 	priceValue := fmt.Sprintf("**%s**", item.Price)
 	if item.TotalPrice != "" {
-		priceValue = fmt.Sprintf("**%s** (+ fee)", item.Price)
 		priceValue = fmt.Sprintf("**%s** (%s)", item.Price, item.TotalPrice)
 	}
 
