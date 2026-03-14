@@ -177,17 +177,6 @@ func (s *Store) BatchSaveItems(items []model.Item) error {
 		return fmt.Errorf("commit: %w", err)
 	}
 
-	if s.cache != nil {
-		monitorID := items[0].MonitorID
-		ids := make([]int64, len(items))
-		for i, item := range items {
-			ids[i] = item.ID
-		}
-		if err := s.cache.BatchMarkAsSeen(monitorID, ids); err != nil {
-			log.Printf("redis batch mark-seen failed: %v", err)
-		}
-	}
-
 	return nil
 }
 
