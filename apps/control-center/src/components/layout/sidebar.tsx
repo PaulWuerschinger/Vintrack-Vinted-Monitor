@@ -56,9 +56,14 @@ export function Sidebar({ user }: SidebarProps) {
           <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center">
             <span className="text-white text-xs font-bold">V</span>
           </div>
-          <span className="font-semibold text-[15px] tracking-tight text-slate-900">
-            Vintrack
-          </span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-semibold text-[15px] tracking-tight text-slate-900">
+              Vintrack
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              v{process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0"}
+            </span>
+          </div>
         </Link>
       </div>
 
