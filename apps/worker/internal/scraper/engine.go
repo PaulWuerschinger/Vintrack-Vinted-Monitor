@@ -177,7 +177,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 
 		if checks%20 == 0 {
 			if updated, err := e.db.GetMonitorByID(m.ID); err == nil {
-				if m.Status != "active" {
+				if updated.Status != "active" {
 					log.Printf("[%d] paused via dashboard", m.ID)
 					return
 				}
@@ -228,13 +228,19 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 					gotSuccess = true
 					if remaining > 0 {
 						go func(ch chan fetchResult, n int, p *ClientPool) {
-							for i := 0; i < n; i++ {
-								r := <-ch
+						drain := time.NewTimer(10 * time.Second)
+						defer drain.Stop()
+						for i := 0; i < n; i++ {
+							select {
+							case r := <-ch:
 								if r.status == 403 {
 									p.Replace(r.client)
 								}
+							case <-drain.C:
+								return
 							}
-						}(resultCh, remaining, pool)
+						}
+					}(resultCh, remaining, pool)
 					}
 					break collectLoop
 				} else if r.status == 403 {
@@ -243,10 +249,16 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			case <-timeout.C:
 				if remaining > 0 {
 					go func(ch chan fetchResult, n int, p *ClientPool) {
+						drain := time.NewTimer(10 * time.Second)
+						defer drain.Stop()
 						for i := 0; i < n; i++ {
-							r := <-ch
-							if r.status == 403 {
-								p.Replace(r.client)
+							select {
+							case r := <-ch:
+								if r.status == 403 {
+									p.Replace(r.client)
+								}
+							case <-drain.C:
+								return
 							}
 						}
 					}(resultCh, remaining, pool)
