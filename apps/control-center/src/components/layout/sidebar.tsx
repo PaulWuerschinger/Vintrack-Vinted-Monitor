@@ -66,6 +66,9 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             <span className="font-semibold text-[15px] tracking-tight text-slate-900">
               Vintrack
             </span>
+            <span className="text-[10px] font-medium text-slate-400">
+              v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </span>
           </div>
         </Link>
         <button 
@@ -206,6 +209,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           >
             <LogOut className="w-3.5 h-3.5" />
           </Link>
+        </div>
+        <div className="mt-2 px-2 flex justify-center">
+          <p className="text-[10px] text-slate-400 font-medium">
+            Vintrack v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </p>
         </div>
       </div>
     </aside>
