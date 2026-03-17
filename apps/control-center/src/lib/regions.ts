@@ -28,13 +28,17 @@ export const REGIONS: Region[] = [
   { code: "fi", label: "Finland", flag: "🇫🇮", domain: "vinted.fi" },
 ];
 
+const REGIONS_BY_CODE: Record<string, Region> = Object.create(null);
+for (const region of REGIONS) {
+  REGIONS_BY_CODE[region.code] = region;
+}
+
 export function getRegionLabel(code: string): string {
-  const region = REGIONS.find((r) => r.code === code);
+  const region = REGIONS_BY_CODE[code];
   if (!region) return code.toUpperCase();
   return `${region.flag} ${region.label}`;
 }
 
 export function getRegionFlag(code: string): string {
-  const region = REGIONS.find((r) => r.code === code);
-  return region?.flag ?? "🌐";
+  return REGIONS_BY_CODE[code]?.flag ?? "🌐";
 }

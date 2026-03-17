@@ -301,9 +301,13 @@ export const BRANDS: Brand[] = [
   { label: "Funko", id: "295656" },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
+const BRANDS_BY_ID: Record<string, Brand> = Object.create(null);
+for (const brand of BRANDS) {
+  BRANDS_BY_ID[brand.id] = brand;
+}
+
 export function getBrandLabel(id: string): string {
-  const brand = BRANDS.find((b) => b.id === id);
-  return brand?.label ?? id;
+  return BRANDS_BY_ID[id]?.label ?? id;
 }
 
 export function getBrandLabels(brandIds: string | null | undefined): string[] {

@@ -83,15 +83,17 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
+const CATEGORIES_BY_ID: Record<number, string> = Object.create(null);
+for (const group of CATEGORIES) {
+  CATEGORIES_BY_ID[group.id] = group.label;
+  for (const child of group.children) {
+    CATEGORIES_BY_ID[child.id] = `${group.label} › ${child.label}`;
+  }
+}
+
 export function getCategoryLabel(id: string): string {
   const numId = Number(id);
-  for (const group of CATEGORIES) {
-    if (group.id === numId) return group.label;
-    for (const child of group.children) {
-      if (child.id === numId) return `${group.label} › ${child.label}`;
-    }
-  }
-  return id;
+  return CATEGORIES_BY_ID[numId] ?? id;
 }
 
 export function getCategoryLabels(catalogIds: string | null | undefined): string[] {

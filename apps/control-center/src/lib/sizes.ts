@@ -195,13 +195,16 @@ export const SIZE_GROUPS: SizeGroup[] = [
   },
 ];
 
+const SIZES_BY_ID: Record<number, SizeOption> = Object.create(null);
+for (const group of SIZE_GROUPS) {
+  for (const size of group.sizes) {
+    SIZES_BY_ID[size.id] = size;
+  }
+}
+
 export function getSizeLabel(id: string): string {
   const numId = Number(id);
-  for (const group of SIZE_GROUPS) {
-    const found = group.sizes.find((s) => s.id === numId);
-    if (found) return found.label;
-  }
-  return id;
+  return SIZES_BY_ID[numId]?.label ?? id;
 }
 
 export function getSizeLabels(sizeId: string | null | undefined): string[] {

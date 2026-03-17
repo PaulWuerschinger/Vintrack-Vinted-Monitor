@@ -27,9 +27,14 @@ export const COLORS: Color[] = [
   { label: "Multicolor", id: "16", hex: "multi" },
 ];
 
+const COLORS_BY_ID: Record<string, Color> = Object.create(null);
+for (const color of COLORS) {
+  COLORS_BY_ID[color.id] = color;
+}
+
 export function getColorLabels(ids: string): string[] {
   return ids
     .split(",")
-    .map((id) => COLORS.find((c) => c.id === id.trim())?.label)
+    .map((id) => COLORS_BY_ID[id.trim()]?.label)
     .filter(Boolean) as string[];
 }
