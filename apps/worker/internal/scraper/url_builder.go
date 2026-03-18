@@ -18,7 +18,9 @@ func BuildVintedURL(m model.Monitor) string {
 		perPage = "20"
 	}
 
-	params.Add("search_text", m.Query)
+	if m.Query != "" {
+		params.Add("search_text", m.Query)
+	}
 	params.Add("order", "newest_first")
 	params.Add("per_page", perPage)
 

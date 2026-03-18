@@ -298,6 +298,16 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			reportHealth("")
 		}
 
+		if len(items) == 0 {
+			if checks%10 == 0 {
+				log.Printf("[%d] #%d | 0 items returned by Vinted", m.ID, checks)
+			}
+			if remaining := intervalDuration - time.Since(cycleStart); remaining > 0 {
+				time.Sleep(remaining)
+			}
+			continue
+		}
+
 		ids := make([]int64, len(items))
 		for i, item := range items {
 			ids[i] = item.ID
@@ -312,10 +322,6 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			}
 		}
 
-		if len(newItems) > 0 {
-			log.Printf("[%d] #%d | %d items | %d new | %dms", m.ID, checks, len(items), len(newItems), time.Since(cycleStart).Milliseconds())
-		}
-
 		if len(newItems) == 0 {
 			if remaining := intervalDuration - time.Since(cycleStart); remaining > 0 {
 				time.Sleep(remaining)
@@ -323,11 +329,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			continue
 		}
 
-		newIDs := make([]int64, len(newItems))
-		for i, item := range newItems {
-			newIDs[i] = item.ID
-		}
-		e.db.MarkItemsSeen(m.ID, newIDs)
+		log.Printf("[%d] #%d | %d items | %d new | %dms", m.ID, checks, len(items), len(newItems), time.Since(cycleStart).Milliseconds())
 
 		builtItems := e.buildItems(m, newItems)
 
@@ -343,6 +345,13 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 		for _, item := range builtItems {
 			log.Printf("[%d] NEW: %s (%s) [%s]", m.ID, item.Title, item.Price, item.Size)
 		}
+
+		newIDs := make([]int64, len(newItems))
+		for i, item := range newItems {
+			newIDs[i] = item.ID
+		}
+		e.db.MarkItemsSeen(m.ID, newIDs)
+
 		go func(ctx context.Context, items []model.Item, vItems []model.VintedItem, monitorID int, webhook string, webhookActive bool, query string, ps string, scr *HTMLScraper, dom string, allowedCountries *string) {
 			if e.enrichSeller && scr != nil {
 				sem := make(chan struct{}, 10)
@@ -387,6 +396,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 				var filtered []model.Item
 				for _, it := range items {
 					if it.Location == "" {
+						log.Printf("[%d] Item %d dropped: location unknown (enrichment failed)", monitorID, it.ID)
 						continue
 					}
 					locLower := strings.ToLower(it.Location)
@@ -399,6 +409,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 					}
 					if matched {
 						filtered = append(filtered, it)
+					} else {
+						log.Printf("[%d] Item %d dropped: location %q not in %q", monitorID, it.ID, it.Location, *allowedCountries)
 					}
 				}
 				items = filtered

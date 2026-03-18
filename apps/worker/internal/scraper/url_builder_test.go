@@ -140,6 +140,20 @@ func TestBuildVintedURL_NilFilters(t *testing.T) {
 	}
 }
 
+func TestBuildVintedURL_EmptyQuery(t *testing.T) {
+	m := model.Monitor{
+		Query:  "",
+		Region: "de",
+	}
+
+	result := BuildVintedURL(m)
+	parsed, _ := url.Parse(result)
+
+	if got := parsed.Query().Get("search_text"); got != "" {
+		t.Errorf("search_text = %q, want empty", got)
+	}
+}
+
 func TestBuildVintedURL_Regions(t *testing.T) {
 	regions := map[string]string{
 		"de": "www.vinted.de",
