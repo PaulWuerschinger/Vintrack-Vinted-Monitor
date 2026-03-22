@@ -62,7 +62,8 @@ Built for resellers who need speed. Open-sourced for the community.
 
 - **Sub-2s detection** — catch items faster than any other tool
 - **Anti-detection** — TLS fingerprint rotation with proxy support
-- **Granular filters** — price, size, category, brand, country/region, and more
+- **Granular filters** — price, size, category, brand, color, and country/region
+- **Direct Interaction** — Like items, send offers, and message sellers from the dashboard
 - **Full dashboard** — no CLI needed, everything from the browser
 - **One-command deploy** — `docker compose up` and you're live
 
@@ -79,29 +80,26 @@ Fine-tune every monitor with:
 - **Price range** — min/max price boundaries
 - **Categories** — over 900+ Vinted categories supported
 - **Brands** — filter by specific brands
+- **Colors** — filter by item colors
 - **Sizes** — clothing size filtering
-- **Country / Region** — choose the Vinted market per monitor (e.g. `vinted.de`, `vinted.hu`, `vinted.fr`)
+- **Seller Origin** — filter by seller country (e.g. only show items from France or Italy)
+- **Region** — choose the Vinted market per monitor (e.g. `vinted.de`, `vinted.hu`, `vinted.fr`)
 
-### Country / Region Monitoring
-Vintrack now supports per-monitor Vinted country selection. Instead of being limited to `vinted.de`, each monitor can target a specific Vinted domain.
-
-- Region is selected in monitor creation
-- Worker uses region-aware API base URLs and headers
-- Supports major Vinted EU markets (including Hungary / `vinted.hu`)
-- Existing monitors default to `de` for backward compatibility
-
-### Vinted Account Linking
+### Vinted Account Linking & Interactions
 Link your Vinted account directly in the dashboard to interact with listings without leaving Vintrack:
-- **Like items** — one-click like from the feed or monitor view
+- **Like / Unlike items** — one-click like/unlike from the feed or monitor view
+- **Send Offers** — make price offers directly to sellers (with built-in 60% minimum price validation)
+- **Message Sellers** — start a conversation or ask questions instantly
+- **Multi-Image Preview** — view extra images and high-res gallery directly in the dashboard
 - **Account management** — link/unlink with region selection (12 EU markets)
-- **Session handling** — secure token storage in Redis with automatic 7-day TTL
+- **Token Refresh** — support for `refresh_token` to maintain sessions long-term
 - **Status monitoring** — see your linked account status, username, and domain at a glance
 
-To link your account, grab your `access_token_web` cookie from Vinted's DevTools and paste it in the Account page.
+To link your account, grab your `access_token_web` (and optionally `refresh_token`) from Vinted's DevTools and paste it in the Account page.
 
 ### Discord Notifications
 Rich embed webhooks sent instantly when a new item is found:
-- Item image, title, price, size, condition
+- Item image, title, price (including fees), size, condition
 - Seller region & rating (enriched via HTML scraping)
 - Direct buy link + app deep link + dashboard link
 - Per-webhook toggle — pause without deleting
@@ -125,14 +123,6 @@ Built-in role system with Discord OAuth:
 | **Premium** | ✅ | ✅ | ❌ |
 | **Admin** | ✅ | ✅ | ✅ |
 
-On the public demo (`vintrack.jakobaio.dev`), signups are currently limited to the **Free** role.
-
-### Admin Dashboard
-Manage all users from a dedicated admin panel:
-- View all registered users with stats
-- Change roles (Free → Premium → Admin) in one click
-- Monitor and proxy group counts per user
-
 ---
 
 ## Screenshots
@@ -150,6 +140,11 @@ Manage all users from a dedicated admin panel:
   <img src="docs/screenshots/user-management.webp" width="49%" alt="Admin Panel" />
 </p>
 <p align="center">
+  <img src="docs/screenshots/send-message.webp" width="49%" alt="Send Message Dialog" />
+  <img src="docs/screenshots/send-offer.webp" width="49%" alt="Send Offer Dialog" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/account.webp" width="49%" alt="Account Page" />
   <img src="docs/screenshots/discord-embed.webp" width="49%" alt="Discord Alert" />
 </p>
 
@@ -181,7 +176,7 @@ Manage all users from a dedicated admin panel:
               ┌────────┴────────┴──┐  ┌──┴───▼──────────┐
               │     Go Worker      │  │ Vinted Service  │
               │ tls-client · proxy │  │ Account linking │
-              │  rotation · scrape │  │ Likes · Sessions│
+              │  rotation · scrape │  │ Likes · Offers  │
               └──────┬──────────┬──┘  └────────┬────────┘
                      │          │              │
             ┌────────▼──┐  ┌───▼───────┐  ┌───▼────────┐
@@ -196,7 +191,7 @@ Manage all users from a dedicated admin panel:
 3. Goroutine polls Vinted API through rotating proxies
 4. New items are deduplicated via Redis, stored in PostgreSQL, published via SSE
 5. Discord webhooks fire immediately for configured monitors
-6. Users with a linked Vinted account can like items directly from the feed via the Vinted Service
+6. Users with a linked Vinted account can like items, send offers, and message sellers directly via the Vinted Service
 
 ---
 
@@ -205,7 +200,7 @@ Manage all users from a dedicated admin panel:
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | **Frontend** | Next.js 16, React 19, Tailwind CSS 4, shadcn/ui | Dashboard & UI |
-| **Backend** | Next.js Server Actions, App Router | API & auth |
+| **Backend** | Next.js Server Actions, API Routes | API & auth |
 | **Worker** | Go 1.25, tls-client, goroutines | High-perf scraping |
 | **Vinted Service** | Go 1.25, TLS client, Redis sessions | Account linking & item actions |
 | **Database** | PostgreSQL 15 + Prisma ORM | Persistent storage |
@@ -227,7 +222,7 @@ Manage all users from a dedicated admin panel:
 
 ### Proxy Recommendation (Referral)
 
-If you need affordable proxies, I can recommend **IPv6 proxies from Proxy6** — they are low-cost and come with **no data limit**.
+If you need affordable proxies, I can recommend **IPv6 proxies from Proxy6** — they are low-cost and come with **no data limit**. (For testing, for example, 1 Monitor ~5 proxies are more than enough).
 
 - Referral link: https://proxy6.net/?r=864123
 - Alternative referral link: https://proxy6.net/a/864123
@@ -283,149 +278,12 @@ Invalid lines are automatically skipped with a warning in logs.
 
 ---
 
-## Self-Hosting
-
-### Production with HTTPS
-
-Vintrack includes Caddy for automatic HTTPS via Let's Encrypt:
-
-1. Point your domain's **A record** to your server IP
-2. Update the `Caddyfile`:
-
-```
-yourdomain.com {
-    reverse_proxy control-center:3000
-}
-```
-
-3. Update `AUTH_URL` in `docker-compose.yml`:
-
-```yaml
-- AUTH_URL=https://yourdomain.com
-```
-
-4. Set the Discord OAuth2 callback URL to:
-
-```
-https://yourdomain.com/api/auth/callback/discord
-```
-
-5. Deploy:
-
-```bash
-docker compose up -d --build
-```
-
-### Making Yourself Admin
-
-After first login, promote your user:
-
-```bash
-docker exec -it vintrack_db psql -U vinuser -d vintrack \
-  -c "UPDATE \"User\" SET role = 'admin' WHERE email = 'your@email.com';"
-```
-
----
-
-## Project Structure
-
-```
-vintrack/
-├── docker-compose.yml            # Stack orchestration
-├── Caddyfile                     # HTTPS reverse proxy
-├── .env                          # Secrets (not committed)
-│
-├── apps/
-│   ├── control-center/           # Next.js 16 dashboard
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma     # Database models
-│   │   │   └── migrations/       # Auto-generated migrations
-│   │   └── src/
-│   │       ├── auth.ts           # NextAuth config
-│   │       ├── actions/          # Server actions
-│   │       │   ├── account.ts    #   Vinted account linking
-│   │       │   ├── admin.ts      #   User management (admin)
-│   │       │   ├── dashboard-actions.ts
-│   │       │   ├── monitor.ts    #   Monitor CRUD
-│   │       │   └── proxy-groups.ts
-│   │       ├── app/
-│   │       │   ├── (auth)/       # OAuth routes
-│   │       │   ├── (dashboard)/  # Protected pages
-│   │       │   │   ├── account/  #   Vinted account management
-│   │       │   │   ├── admin/    #   Admin panel
-│   │       │   │   ├── dashboard/#   Monitor overview
-│   │       │   │   ├── feed/     #   Real-time feed
-│   │       │   │   ├── monitors/ #   Monitor detail + creation
-│   │       │   │   └── proxies/  #   Proxy group management
-│   │       │   └── api/          # API routes (SSE, likes)
-│   │       ├── components/       # React components
-│   │       └── lib/              # Utils, DB, constants
-│   │
-│   ├── vinted-service/           # Go Vinted interaction service
-│   │   ├── cmd/main.go           # Entrypoint
-│   │   └── internal/
-│   │       ├── api/              # HTTP handlers (link, like, etc.)
-│   │       ├── session/          # Redis session management
-│   │       └── vinted/           # Vinted API client (auth, likes)
-│   │
-│   └── worker/                   # Go scraping engine
-│       ├── cmd/main.go           # Entrypoint
-│       └── internal/
-│           ├── cache/            # Redis dedup + pub/sub
-│           ├── database/         # PostgreSQL queries
-│           ├── discord/          # Webhook sender
-│           ├── model/            # Shared types
-│           ├── pipeline/         # Monitor lifecycle
-│           ├── proxy/            # Rotation + validation
-│           └── scraper/          # Vinted API + HTML scraper
-```
-
----
-
-## How It Works
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant DB as PostgreSQL
-    participant W as Worker
-    participant VS as Vinted Service
-    participant V as Vinted API
-    participant R as Redis
-    participant DC as Discord
-
-    U->>D: Create monitor (query, filters, region)
-    D->>DB: Save monitor (status: active)
-    W->>DB: Poll for active monitors (every 5s)
-    W->>V: Fetch listings (via proxy)
-    V-->>W: Return items
-    W->>R: Check dedup cache
-    R-->>W: New item IDs
-    W->>DB: Store new items
-    W->>R: Publish via SSE channel
-    R-->>D: Push to live feed
-    W->>DC: Send webhook embed
-    DC-->>U: Discord notification
-
-    Note over U,VS: Account Linking Flow
-    U->>D: Link Vinted account
-    D->>VS: Store session (access token)
-    VS->>R: Persist session (7-day TTL)
-    U->>D: Click like on item
-    D->>VS: Like request
-    VS->>V: POST /api/v2/user_favourites/toggle
-    V-->>VS: Success
-    VS-->>D: Liked
-```
-
----
-
 ## Roadmap
 
 - [x] Vinted Account Linking
-- [x] Like items from dashboard
-- [ ] Send offers to sellers
+- [x] Like / Unlike items
+- [x] Send offers to sellers
+- [x] Send messages to sellers
 - [ ] One-click buy
 - [ ] Auto-buy with price rules
 - [ ] Auto Chat Module
