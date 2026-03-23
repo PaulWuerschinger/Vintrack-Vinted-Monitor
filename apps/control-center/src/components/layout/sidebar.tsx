@@ -12,9 +12,9 @@ const ACCOUNT_SEEN_KEY = "vintrack:account-tab-seen";
 const navItems = [
   { href: "/dashboard", label: "Monitors", icon: LayoutDashboard },
   { href: "/feed", label: "Live Feed", icon: Radio },
-  { href: "/liked", label: "Liked Items", icon: Heart },
   { href: "/proxies", label: "Proxy Groups", icon: Globe },
   { href: "/account", label: "Account", icon: User },
+  { href: "/liked", label: "Liked Items", icon: Heart },
   { href: "/guide", label: "Guide", icon: BookOpen },
 ];
 
