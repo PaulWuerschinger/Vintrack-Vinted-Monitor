@@ -16,6 +16,7 @@ import {
   Zap,
   AlertTriangle,
   Pencil,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,7 @@ import {
   updateMonitorWebhook,
   toggleWebhookStatus,
 } from "@/actions/dashboard-actions";
+import { testDiscordWebhook } from "@/actions/monitor";
 import { getCategoryLabels } from "@/lib/categories";
 import { getBrandLabels } from "@/lib/brands";
 import { getColorLabels } from "@/lib/colors";
@@ -87,8 +89,25 @@ export function DashboardClient({
   const [webhookInput, setWebhookInput] = useState("");
   const [isWebhookOpen, setIsWebhookOpen] = useState(false);
   const [isWebhookActive, setIsWebhookActive] = useState(true);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
   const [healthMap, setHealthMap] = useState<Record<number, MonitorHealth>>({});
+
+  const handleTestWebhook = async () => {
+    if (!webhookInput) {
+      toast.error("Please enter a webhook URL first");
+      return;
+    }
+    setIsTestingWebhook(true);
+    const result = await testDiscordWebhook(webhookInput);
+    setIsTestingWebhook(false);
+    
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Test webhook sent successfully!");
+    }
+  };
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -478,12 +497,25 @@ export function DashboardClient({
           <div className="grid gap-5 py-4">
             <div className="grid gap-2">
               <Label htmlFor="webhook">Webhook URL</Label>
-              <Input
-                id="webhook"
-                placeholder="https://discord.com/api/webhooks/..."
-                value={webhookInput}
-                onChange={(e) => setWebhookInput(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="webhook"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={webhookInput}
+                  onChange={(e) => setWebhookInput(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestWebhook}
+                  disabled={isTestingWebhook || !webhookInput}
+                  className="gap-2 shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                  {isTestingWebhook ? "Testing..." : "Test"}
+                </Button>
+              </div>
             </div>
 
             {webhookInput.length > 0 && (
