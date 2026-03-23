@@ -120,6 +120,9 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			LastError:       "no valid proxies available",
 			UpdatedAt:       time.Now().UTC().Format(time.RFC3339),
 		})
+		if m.WebhookActive && m.DiscordWebhook.String != "" {
+			discord.SendAutoStopWebhook(m.DiscordWebhook.String, m.Query, -1)
+		}
 		return
 	}
 	log.Printf("[%d] proxy source: %s (%d proxies)", m.ID, proxySource, pm.Count())
@@ -135,7 +138,7 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 	apiURL := BuildVintedURL(m)
 
 	interval := getEnvInt("CHECK_INTERVAL_MS", 500)
-	maxConsecutiveErrors := getEnvInt("MAX_CONSECUTIVE_ERRORS", 50)
+	maxConsecutiveErrors := getEnvInt("MAX_CONSECUTIVE_ERRORS", 20)
 	raceFetchers := getEnvInt("RACE_FETCHERS", 2)
 	consecutiveErrors := 0
 	checks := 0
@@ -228,19 +231,19 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 					gotSuccess = true
 					if remaining > 0 {
 						go func(ch chan fetchResult, n int, p *ClientPool) {
-						drain := time.NewTimer(10 * time.Second)
-						defer drain.Stop()
-						for i := 0; i < n; i++ {
-							select {
-							case r := <-ch:
-								if r.status == 403 {
-									p.Replace(r.client)
+							drain := time.NewTimer(10 * time.Second)
+							defer drain.Stop()
+							for i := 0; i < n; i++ {
+								select {
+								case r := <-ch:
+									if r.status == 403 {
+										p.Replace(r.client)
+									}
+								case <-drain.C:
+									return
 								}
-							case <-drain.C:
-								return
 							}
-						}
-					}(resultCh, remaining, pool)
+						}(resultCh, remaining, pool)
 					}
 					break collectLoop
 				} else if r.status == 403 {
@@ -279,10 +282,18 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 			if consecutiveErrors%5 == 0 {
 				reportHealth("all fetchers failed")
 				log.Printf("[%d] %d consecutive failures, backing off...", m.ID, consecutiveErrors)
+				if consecutiveErrors == 15 || consecutiveErrors == 30 {
+					if m.WebhookActive && m.DiscordWebhook.String != "" {
+						discord.SendProxyWarningWebhook(m.DiscordWebhook.String, m.Query, consecutiveErrors)
+					}
+				}
 			}
 			if consecutiveErrors >= maxConsecutiveErrors {
 				log.Printf("[%d] ❌ auto-stopping: %d consecutive errors", m.ID, consecutiveErrors)
 				e.db.SetMonitorStatus(m.ID, "error")
+				if m.WebhookActive && m.DiscordWebhook.String != "" {
+					discord.SendAutoStopWebhook(m.DiscordWebhook.String, m.Query, consecutiveErrors)
+				}
 				return
 			}
 			backoff := time.Duration(300+consecutiveErrors*200) * time.Millisecond

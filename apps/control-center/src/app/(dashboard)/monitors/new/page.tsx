@@ -1,6 +1,6 @@
 "use client";
 
-import { createMonitor } from "@/actions/monitor";
+import { createMonitor, testDiscordWebhook } from "@/actions/monitor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,10 @@ import { SizePicker } from "@/components/monitors/size-picker";
 import { RegionPicker } from "@/components/monitors/region-picker";
 import { CountryFilterPicker } from "@/components/monitors/country-filter-picker";
 import { ColorPicker } from "@/components/monitors/color-picker";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Send } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 type ProxyGroupOption = {
   id: number;
@@ -31,7 +32,25 @@ export default function NewMonitorPage() {
   const [proxyGroups, setProxyGroups] = useState<ProxyGroupOption[]>([]);
   const [userRole, setUserRole] = useState<string>("free");
   const [selectedProxyGroup, setSelectedProxyGroup] = useState<string>("");
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const handleTestWebhook = async () => {
+    if (!webhookUrl) {
+      toast.error("Please enter a webhook URL first");
+      return;
+    }
+    setIsTestingWebhook(true);
+    const result = await testDiscordWebhook(webhookUrl);
+    setIsTestingWebhook(false);
+    
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Test webhook sent successfully!");
+    }
+  };
 
   useEffect(() => {
     fetch("/api/proxy-groups")
@@ -230,11 +249,26 @@ export default function NewMonitorPage() {
                   (optional)
                 </span>
               </Label>
-              <Input
-                name="discord_webhook"
-                id="discord_webhook"
-                placeholder="https://discord.com/api/webhooks/..."
-              />
+              <div className="flex gap-2">
+                <Input
+                  name="discord_webhook"
+                  id="discord_webhook"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestWebhook}
+                  disabled={isTestingWebhook || !webhookUrl}
+                  className="gap-2 shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                  {isTestingWebhook ? "Testing..." : "Test"}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
