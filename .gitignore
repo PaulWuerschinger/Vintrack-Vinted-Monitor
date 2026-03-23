@@ -4,6 +4,8 @@ Thumbs.db
 .vscode
 GEMINI.md
 .gemini
+.claude
+AGENTS.md
 
 # --- Environment & Secrets ---
 .env
