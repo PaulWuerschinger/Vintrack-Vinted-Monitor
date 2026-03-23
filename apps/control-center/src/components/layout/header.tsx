@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { ChevronRight, Github, Star, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -32,11 +32,11 @@ export function Header({ onMenuClick }: HeaderProps) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-12 bg-white/80 backdrop-blur-sm border-b border-slate-100 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40">
+    <header className="sticky top-0 z-40 flex h-12 items-center justify-between border-b border-border/70 bg-background/72 px-4 backdrop-blur-xl md:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-1.5 -ml-1.5 text-slate-500 hover:bg-slate-50 rounded-md transition-colors"
+          className="-ml-1.5 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:hidden"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -44,12 +44,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         <nav className="hidden sm:flex items-center gap-1 text-sm">
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
+              {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
               <span
                 className={
                   crumb.isCurrent
-                    ? "font-medium text-slate-900"
-                    : "text-slate-400"
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground"
                 }
               >
                 {crumb.label}
@@ -60,18 +60,19 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
+        <ThemeToggle compact className="hidden sm:inline-flex" />
         <a
           href="https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-amber-600 transition-colors bg-slate-50 hover:bg-amber-50 px-2 py-1 rounded-md border border-slate-200 hover:border-amber-200"
+          className="hidden items-center gap-1.5 rounded-md border border-border/80 bg-card/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400 sm:flex"
         >
           <Github className="w-3.5 h-3.5" />
           <span className="hidden md:inline">Star us on GitHub</span>
           <Star className="w-3.5 h-3.5" />
         </a>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />

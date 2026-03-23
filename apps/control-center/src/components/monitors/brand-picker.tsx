@@ -58,7 +58,7 @@ export function BrandPicker({ selected, onChange }: BrandPickerProps) {
           {selectedBrands.map((brand) => (
             <span
               key={brand.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[12px] font-medium border border-blue-200"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground border-primary text-[12px] font-medium border border-blue-200"
             >
               {brand.label}
               <button
@@ -84,12 +84,12 @@ export function BrandPicker({ selected, onChange }: BrandPickerProps) {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search brand…"
-          className="w-full h-9 pl-8 pr-3 rounded-md border border-slate-200 bg-white text-[13px] outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-colors"
+          className="w-full h-9 pl-8 pr-3 rounded-md border border-input bg-background text-[13px] outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-border transition-colors"
         />
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border border-input bg-background shadow-lg">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-[13px] text-muted-foreground">
               No brand found
@@ -102,13 +102,13 @@ export function BrandPicker({ selected, onChange }: BrandPickerProps) {
                   key={brand.id}
                   type="button"
                   onClick={() => toggle(brand)}
-                  className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                    isSelected ? "bg-slate-50 font-medium" : ""
+                  className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-muted transition-colors flex items-center justify-between ${
+                    isSelected ? "bg-accent text-accent-foreground font-medium" : ""
                   }`}
                 >
                   <span>{brand.label}</span>
                   {isSelected && (
-                    <span className="text-[11px] text-slate-400">✓</span>
+                    <span className="text-[11px] text-primary">✓</span>
                   )}
                 </button>
               );

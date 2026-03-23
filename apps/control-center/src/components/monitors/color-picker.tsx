@@ -55,7 +55,7 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
     if (hex === "multi") {
       return (
         <span
-          className="inline-block rounded-full border border-slate-200 shrink-0"
+          className="inline-block rounded-full border border-input shrink-0"
           style={{
             width: size,
             height: size,
@@ -67,7 +67,7 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
     }
     return (
       <span
-        className="inline-block rounded-full border border-slate-200 shrink-0"
+        className="inline-block rounded-full border border-input shrink-0"
         style={{ width: size, height: size, backgroundColor: hex }}
       />
     );
@@ -80,14 +80,14 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
           {selectedColors.map((color) => (
             <span
               key={color.id}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 text-[12px] font-medium border border-slate-200"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[12px] font-medium border border-primary"
             >
               <ColorDot hex={color.hex} size={12} />
               {color.label}
               <button
                 type="button"
                 onClick={() => remove(color.id)}
-                className="hover:text-slate-900"
+                className="hover:text-foreground"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -107,12 +107,12 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search color…"
-          className="w-full h-9 pl-8 pr-3 rounded-md border border-slate-200 bg-white text-[13px] outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-colors"
+          className="w-full h-9 pl-8 pr-3 rounded-md border border-input bg-background text-[13px] outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-border transition-colors"
         />
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border border-input bg-background shadow-lg">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-[13px] text-muted-foreground">
               No color found
@@ -125,8 +125,8 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
                   key={color.id}
                   type="button"
                   onClick={() => toggle(color)}
-                  className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                    isSelected ? "bg-slate-50 font-medium" : ""
+                  className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-muted transition-colors flex items-center justify-between ${
+                    isSelected ? "bg-accent text-accent-foreground font-medium" : ""
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function ColorPicker({ selected, onChange }: ColorPickerProps) {
                     {color.label}
                   </span>
                   {isSelected && (
-                    <span className="text-[11px] text-slate-400">✓</span>
+                    <span className="text-[11px] text-primary">✓</span>
                   )}
                 </button>
               );

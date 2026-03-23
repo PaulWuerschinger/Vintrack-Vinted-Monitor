@@ -60,7 +60,7 @@ export default function NewMonitorPage() {
         </div>
       </div>
 
-      <Card className="border-slate-200/60">
+      <Card className="border-input/60">
         <CardContent className="p-6">
           <form action={createMonitor} className="space-y-6">
             <div className="space-y-2">
@@ -240,14 +240,14 @@ export default function NewMonitorPage() {
             <div className="space-y-2">
               <Label className="text-[13px]">Proxy Group</Label>
               {loading ? (
-                <div className="h-10 bg-slate-50 rounded-md animate-pulse" />
+                <div className="h-10 bg-muted rounded-md animate-pulse" />
               ) : (
                 <>
                   <select
                     name="proxy_group_id"
                     value={selectedProxyGroup}
                     onChange={(e) => setSelectedProxyGroup(e.target.value)}
-                    className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1"
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1"
                     required={userRole === "free"}
                   >
                     {(userRole === "premium" || userRole === "admin") && (

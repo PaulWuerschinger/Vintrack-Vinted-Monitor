@@ -133,12 +133,12 @@ export function AccountClient({
       </div>
 
       {status.linked ? (
-        <Card className="border-emerald-200 bg-emerald-50/30">
+        <Card className="border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
                   <CardTitle className="text-lg">
@@ -158,7 +158,7 @@ export function AccountClient({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="bg-white/50 p-2 rounded-md">
+              <div className="bg-muted/50 p-2 rounded-md">
                 <span className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Vinted ID</span>
                 <div className="flex items-center gap-1 mt-0.5">
                   <p className="font-medium">
@@ -176,7 +176,7 @@ export function AccountClient({
                   </button>
                 </div>
               </div>
-              <div className="bg-white/50 p-2 rounded-md">
+              <div className="bg-muted/50 p-2 rounded-md">
                 <span className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Linked</span>
                 <p className="font-medium mt-0.5">
                   {status.linked_at
@@ -184,7 +184,7 @@ export function AccountClient({
                     : "—"}
                 </p>
               </div>
-              <div className="bg-white/50 p-2 rounded-md">
+              <div className="bg-muted/50 p-2 rounded-md">
                 <span className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Last Check</span>
                 <p className="font-medium mt-0.5">
                   {status.last_check
@@ -211,7 +211,7 @@ export function AccountClient({
                 size="sm"
                 onClick={handleUnlink}
                 disabled={isPending}
-                className="flex-1 sm:flex-none gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                className="flex-1 sm:flex-none gap-1.5 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 dark:bg-transparent"
               >
                 <Unlink className="w-3.5 h-3.5" />
                 Unlink Account
@@ -232,16 +232,16 @@ export function AccountClient({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800">
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
                 To get your tokens: Open Vinted in your browser → DevTools
                 (F12) → Application → Cookies → copy the{" "}
-                <code className="bg-amber-100 px-1 rounded text-xs">
+                <code className="bg-amber-100 dark:bg-amber-500/20 px-1 rounded text-xs">
                   access_token_web
                 </code>{" "}
                 and{" "}
-                <code className="bg-amber-100 px-1 rounded text-xs">
+                <code className="bg-amber-100 dark:bg-amber-500/20 px-1 rounded text-xs">
                   refresh_token_web
                 </code>{" "}
                 values.
@@ -261,8 +261,8 @@ export function AccountClient({
                       className={cn(
                         "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-medium transition-colors",
                         isSelected
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       )}
                     >
                       <span className="text-sm shrink-0">{region.flag}</span>
@@ -323,11 +323,11 @@ export function AccountClient({
         <CardContent>
           <ul className="space-y-3 text-sm">
             <li className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
                 <Heart className="w-4 h-4 text-red-500" />
               </div>
               <div>
-                <span className="font-medium text-slate-800">Like items</span>
+                <span className="font-medium text-foreground">Like items</span>
                 <span className="text-muted-foreground ml-1">
                   — directly from the feed
                 </span>
@@ -337,11 +337,11 @@ export function AccountClient({
               </Badge>
             </li>
             <li className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center shrink-0">
                 <MessagesSquare className="w-4 h-4 text-orange-500"/>
               </div>
               <div>
-                <span className="font-medium text-slate-800">
+                <span className="font-medium text-foreground">
                   Send Messages
                 </span>
                 <span className="text-muted-foreground ml-1">
@@ -353,11 +353,11 @@ export function AccountClient({
               </Badge>
             </li>
             <li className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0">
                 <MessageSquare className="w-4 h-4 text-blue-500" />
               </div>
               <div>
-                <span className="font-medium text-slate-800">
+                <span className="font-medium text-foreground">
                   Send offers
                 </span>
                 <span className="text-muted-foreground ml-1">
@@ -369,11 +369,11 @@ export function AccountClient({
               </Badge>
             </li>
             <li className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <ShoppingCart className="w-4 h-4 text-emerald-500" />
               </div>
               <div>
-                <span className="font-medium text-slate-800">
+                <span className="font-medium text-foreground">
                   One-click buy
                 </span>
                 <span className="text-muted-foreground ml-1">
@@ -382,24 +382,24 @@ export function AccountClient({
               </div>
               <Badge
                 variant="secondary"
-                className="ml-auto text-[10px] bg-amber-100 text-amber-700"
+                className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400"
               >
                 Coming Soon
               </Badge>
             </li>
             <li className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4 text-purple-500" />
               </div>
               <div>
-                <span className="font-medium text-slate-800">Auto-buy</span>
+                <span className="font-medium text-foreground">Auto-buy</span>
                 <span className="text-muted-foreground ml-1">
                   — rules with price thresholds
                 </span>
               </div>
               <Badge
                 variant="secondary"
-                className="ml-auto text-[10px] bg-amber-100 text-amber-700"
+                className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
               >
                 Coming Soon
               </Badge>

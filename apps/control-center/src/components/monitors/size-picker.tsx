@@ -34,7 +34,7 @@ export function SizePicker({ selected, onChange }: SizePickerProps) {
         <button
           type="button"
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="w-full h-9 px-3 rounded-md border border-slate-200 bg-white text-[13px] text-left flex items-center justify-between hover:bg-slate-50 transition-colors"
+          className="w-full h-9 px-3 rounded-md border border-input bg-background text-[13px] text-left flex items-center justify-between hover:bg-muted transition-colors"
         >
           <span className="truncate">{activeLabel}</span>
           <ChevronDown
@@ -45,7 +45,7 @@ export function SizePicker({ selected, onChange }: SizePickerProps) {
           />
         </button>
         {dropdownOpen && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg">
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-background shadow-lg">
             {SIZE_GROUPS.map((g) => (
               <button
                 key={g.key}
@@ -55,8 +55,8 @@ export function SizePicker({ selected, onChange }: SizePickerProps) {
                   setDropdownOpen(false);
                 }}
                 className={cn(
-                  "w-full text-left px-3 py-1.5 text-[13px] hover:bg-slate-50 transition-colors",
-                  activeGroup === g.key && "bg-slate-50 font-medium"
+                  "w-full text-left px-3 py-1.5 text-[13px] hover:bg-muted transition-colors",
+                  activeGroup === g.key && "bg-muted font-medium"
                 )}
               >
                 {g.label}
@@ -78,8 +78,8 @@ export function SizePicker({ selected, onChange }: SizePickerProps) {
                 className={cn(
                   "h-8 px-3 rounded-lg text-[13px] font-medium border transition-colors flex items-center gap-1.5",
                   isSelected
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white hover:bg-slate-50 border-slate-200 text-slate-600"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background hover:bg-muted border-input text-muted-foreground"
                 )}
               >
                 {size.label}

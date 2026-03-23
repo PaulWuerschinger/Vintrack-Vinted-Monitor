@@ -78,14 +78,14 @@ export function LiveFeed({ monitorId }: { monitorId: number }) {
         : items.map((item) => <ItemCard key={item.id} item={item} />)}
 
       {items.length === 0 && !loading && (
-        <div className="col-span-full flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-          <div className="bg-slate-100 p-3 rounded-xl mb-4">
-            <Search className="w-6 h-6 text-slate-400" />
+        <div className="col-span-full flex flex-col items-center justify-center py-20 border-2 border-dashed border-border rounded-2xl bg-card">
+          <div className="bg-muted p-3 rounded-xl mb-4">
+            <Search className="w-6 h-6 text-muted-foreground" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800">
-            Waiting for items...
+          <h3 className="text-base font-semibold text-foreground">
+            No items found yet
           </h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm text-center">
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm text-center">
             Items will appear here in real-time as the worker finds them.
           </p>
         </div>

@@ -61,8 +61,8 @@ export default async function MonitorPage({
                 }
                 className={`text-[10px] font-medium ${
                   monitor.status === "active"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-slate-100 text-slate-500"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {monitor.status === "active" ? (
@@ -81,23 +81,23 @@ export default async function MonitorPage({
               <span>ID: {monitor.id}</span>
               {monitor.price_max && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-muted-foreground/50">·</span>
                   <span className="flex items-center gap-1">
                     <Tag className="h-3 w-3" /> Max {monitor.price_max}€
                   </span>
                 </>
               )}
-              <span className="text-slate-300">·</span>
+              <span className="text-muted-foreground/50">·</span>
               <span>{monitor._count.items.toLocaleString()} items</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-muted-foreground/50">·</span>
               <span>{getRegionLabel(monitor.region)}</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-muted-foreground/50">·</span>
               {monitor.proxy_group ? (
                 <span className="flex items-center gap-1">
                   <Globe className="h-3 w-3" /> {monitor.proxy_group.name}
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-amber-600">
+                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500">
                   <Zap className="h-3 w-3" /> Server Proxies
                 </span>
               )}
@@ -107,7 +107,7 @@ export default async function MonitorPage({
               <div className="flex flex-wrap gap-1 mt-2">
                 {monitor.allowed_countries && (
                   <span
-                    className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                    className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20"
                     title={`Only items from: ${monitor.allowed_countries}`}
                   >
                     {getRegionFlags(monitor.allowed_countries).join(" ")}
@@ -117,7 +117,7 @@ export default async function MonitorPage({
                   getCategoryLabels(monitor.catalog_ids).map((label) => (
                     <span
                       key={`cat-${label}`}
-                      className="inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 border border-violet-200"
+                      className="inline-flex items-center rounded-md bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-500/20"
                     >
                       {label}
                     </span>
@@ -126,7 +126,7 @@ export default async function MonitorPage({
                   getBrandLabels(monitor.brand_ids).map((label) => (
                     <span
                       key={`brand-${label}`}
-                      className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-200"
+                      className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20"
                     >
                       {label}
                     </span>
@@ -135,7 +135,7 @@ export default async function MonitorPage({
                   getColorLabels(monitor.color_ids).map((label) => (
                     <span
                       key={`color-${label}`}
-                      className="inline-flex items-center rounded-md bg-pink-50 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 border border-pink-200"
+                      className="inline-flex items-center rounded-md bg-pink-50 dark:bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-500/20"
                     >
                       {label}
                     </span>
@@ -144,7 +144,7 @@ export default async function MonitorPage({
                   getSizeLabels(monitor.size_id).map((label) => (
                     <span
                       key={`size-${label}`}
-                      className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200"
+                      className="inline-flex items-center rounded-md bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20"
                     >
                       {label}
                     </span>
@@ -159,7 +159,7 @@ export default async function MonitorPage({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-medium text-slate-600 border-slate-200 hover:bg-slate-50"
+              className="h-8 text-xs font-medium text-muted-foreground border-border hover:bg-muted"
             >
               <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
             </Button>
@@ -171,8 +171,8 @@ export default async function MonitorPage({
               size="sm"
               className={`h-8 text-xs font-medium ${
                 monitor.status === "active"
-                  ? "text-amber-600 border-amber-200 hover:bg-amber-50"
-                  : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                  ? "text-amber-600 dark:text-amber-500 border-amber-200 dark:border-amber-500/20 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                  : "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
               }`}
             >
               {monitor.status === "active" ? (
@@ -191,7 +191,7 @@ export default async function MonitorPage({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-medium text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+              className="h-8 text-xs font-medium text-red-500 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300"
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
             </Button>

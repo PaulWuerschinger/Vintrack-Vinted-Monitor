@@ -12,7 +12,6 @@ import {
   Radio,
   Package,
   ArrowRight,
-  MoreHorizontal,
   Globe,
   Zap,
   AlertTriangle,
@@ -102,9 +101,12 @@ export function DashboardClient({
   }, []);
 
   useEffect(() => {
-    fetchHealth();
+    const timeout = window.setTimeout(fetchHealth, 0);
     const interval = setInterval(fetchHealth, 10_000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, [fetchHealth]);
 
   const openWebhookDialog = (monitor: Monitor) => {
@@ -195,7 +197,7 @@ export function DashboardClient({
               variant="outline"
               size="sm"
               onClick={handleStopAll}
-              className="flex-1 sm:flex-none gap-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              className="flex-1 sm:flex-none gap-1.5 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 dark:bg-transparent hover:text-red-700"
             >
               <StopCircle className="w-3.5 h-3.5" /> Stop All
             </Button>
@@ -208,21 +210,21 @@ export function DashboardClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200/60 px-5 py-4">
-          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border/75 bg-card/80 px-5 py-4 shadow-sm backdrop-blur">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Total Monitors
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
+          <p className="mt-1 text-2xl font-bold text-foreground">
             {monitors.length}
           </p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200/60 px-5 py-4">
-          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-border/75 bg-card/80 px-5 py-4 shadow-sm backdrop-blur">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Active
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-2xl font-bold text-slate-900">{activeCount}</p>
+            <p className="text-2xl font-bold text-foreground">{activeCount}</p>
             {activeCount > 0 && (
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -231,25 +233,25 @@ export function DashboardClient({
             )}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200/60 px-5 py-4">
-          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-border/75 bg-card/80 px-5 py-4 shadow-sm backdrop-blur">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Items Found
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
+          <p className="mt-1 text-2xl font-bold text-foreground">
             {totalItems.toLocaleString()}
           </p>
         </div>
       </div>
 
       {monitors.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-          <div className="bg-slate-100 p-3 rounded-xl mb-4">
-            <Radio className="w-6 h-6 text-slate-400" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card/75 py-20 shadow-sm backdrop-blur">
+          <div className="mb-4 rounded-xl bg-muted p-3">
+            <Radio className="w-6 h-6 text-muted-foreground" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800">
+          <h3 className="text-base font-semibold text-foreground">
             No monitors yet
           </h3>
-          <p className="text-sm text-slate-500 mt-1 mb-4">
+          <p className="mb-4 mt-1 text-sm text-muted-foreground">
             Create your first monitor to start finding deals.
           </p>
           <Link href="/monitors/new">
@@ -263,13 +265,13 @@ export function DashboardClient({
           {sortedMonitors.map((m) => (
             <Card
               key={m.id}
-              className="group bg-white border-slate-200/60 hover:border-slate-300 transition-colors overflow-hidden flex flex-col"
+              className="group flex flex-col overflow-hidden border-border/75 bg-card/85 transition-colors hover:border-border hover:bg-card"
             >
               <CardContent className="p-5 flex flex-col flex-1">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0 flex-1">
                     <h3
-                      className="font-semibold text-[15px] text-slate-900 truncate"
+                      className="truncate text-[15px] font-semibold text-foreground"
                       title={m.query}
                     >
                       {m.query}
@@ -281,10 +283,10 @@ export function DashboardClient({
                         }
                         className={`text-[10px] font-medium ${
                           m.status === "active"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                            ? "border-emerald-500/20 bg-emerald-500/12 text-emerald-400 hover:bg-emerald-500/18"
                             : m.status === "error"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-slate-100 text-slate-500"
+                              ? "border-red-500/20 bg-red-500/12 text-red-400"
+                              : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {m.status === "active" ? (
@@ -302,12 +304,12 @@ export function DashboardClient({
                         )}
                       </Badge>
                       {m.price_max && (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-muted-foreground">
                           Max {m.price_max}€
                         </span>
                       )}
                       {m.region && m.region && (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-muted-foreground">
                           {getRegionLabel(m.region)}
                         </span>
                       )}
@@ -316,7 +318,7 @@ export function DashboardClient({
                   <div className="flex items-center gap-0.5 shrink-0">
                     <Link href={`/monitors/${m.id}/edit`}>
                       <button
-                        className="text-slate-300 hover:text-slate-500 transition-colors p-1.5 rounded-md hover:bg-slate-50"
+                        className="rounded-md p-1.5 text-muted-foreground/55 transition-colors hover:bg-accent hover:text-accent-foreground"
                         title="Edit monitor"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -324,7 +326,7 @@ export function DashboardClient({
                     </Link>
                     <button
                       onClick={() => openWebhookDialog(m)}
-                      className="text-slate-300 hover:text-slate-500 transition-colors p-1.5 rounded-md hover:bg-slate-50"
+                      className="rounded-md p-1.5 text-muted-foreground/55 transition-colors hover:bg-accent hover:text-accent-foreground"
                       title="Configure webhook"
                     >
                       <Webhook
@@ -342,7 +344,7 @@ export function DashboardClient({
                   <div className="flex flex-wrap gap-1 mb-3">
                     {m.allowed_countries && (
                       <span
-                        className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                        className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/12 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400"
                         title={`Only items from: ${m.allowed_countries}`}
                       >
                         {getRegionFlags(m.allowed_countries).join(" ")}
@@ -352,7 +354,7 @@ export function DashboardClient({
                       getCategoryLabels(m.catalog_ids).map((label) => (
                         <span
                           key={`cat-${label}`}
-                          className="inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 border border-violet-200"
+                          className="inline-flex items-center rounded-md border border-violet-500/20 bg-violet-500/12 px-1.5 py-0.5 text-[10px] font-medium text-violet-300"
                         >
                           {label}
                         </span>
@@ -361,7 +363,7 @@ export function DashboardClient({
                       getBrandLabels(m.brand_ids).map((label) => (
                         <span
                           key={`brand-${label}`}
-                          className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-200"
+                          className="inline-flex items-center rounded-md border border-blue-500/20 bg-blue-500/12 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
                         >
                           {label}
                         </span>
@@ -370,7 +372,7 @@ export function DashboardClient({
                       getColorLabels(m.color_ids).map((label) => (
                         <span
                           key={`color-${label}`}
-                          className="inline-flex items-center rounded-md bg-pink-50 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 border border-pink-200"
+                          className="inline-flex items-center rounded-md border border-pink-500/20 bg-pink-500/12 px-1.5 py-0.5 text-[10px] font-medium text-pink-300"
                         >
                           {label}
                         </span>
@@ -379,7 +381,7 @@ export function DashboardClient({
                       getSizeLabels(m.size_id).map((label) => (
                         <span
                           key={`size-${label}`}
-                          className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200"
+                          className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
                         >
                           {label}
                         </span>
@@ -389,47 +391,47 @@ export function DashboardClient({
 
                 <div className="flex-1" />
 
-                <div className="flex items-center gap-1.5 text-[13px] text-slate-500 mb-1.5">
-                  <Package className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="font-medium text-slate-700">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                  <Package className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     {m._count.items.toLocaleString()}
                   </span>
                   items found
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[13px] text-slate-500 mb-2">
+                <div className="mb-2 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                   {m.proxy_group_name ? (
                     <>
-                      <Globe className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-medium text-slate-700 truncate" title={m.proxy_group_name}>
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="truncate font-medium text-foreground" title={m.proxy_group_name}>
                         {m.proxy_group_name}
                       </span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="font-medium text-amber-600">
+                      <span className="font-medium text-amber-600 dark:text-amber-400">
                         Server Proxies
                       </span>
                     </>
                   )}
                   {m.status === "active" && hasProxyWarning(healthMap[m.id]) && (
-                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border bg-red-50 text-red-700 border-red-200">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/12 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
                       <AlertTriangle className="w-3 h-3" />
                       Proxy Warning
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-2 border-t border-border/70 pt-3">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleToggle(m.id, m.status)}
                     className={`h-8 px-3 text-xs font-medium ${
                       m.status === "active"
-                        ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                        : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        ? "text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                        : "text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
                     }`}
                   >
                     {m.status === "active" ? (
@@ -447,7 +449,7 @@ export function DashboardClient({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-3 text-xs font-medium text-slate-500 hover:text-slate-800 gap-1"
+                      className="h-8 gap-1 px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
                     >
                       View <ArrowRight className="w-3 h-3" />
                     </Button>
@@ -485,7 +487,7 @@ export function DashboardClient({
             </div>
 
             {webhookInput.length > 0 && (
-              <div className="flex items-center justify-between space-x-2 border p-3 rounded-lg bg-slate-50">
+              <div className="flex items-center justify-between space-x-2 rounded-lg border border-border/80 bg-muted/45 p-3">
                 <div className="flex flex-col space-y-0.5">
                   <Label
                     htmlFor="active-mode"

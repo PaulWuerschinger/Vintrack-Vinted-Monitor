@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, ImageOff, Heart, MessageCircle, Send, Loader2, XIcon, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import Link from "next/link";
@@ -56,29 +56,39 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
 
   const allImages = item.image_url ? [item.image_url, ...(item.extra_images || [])] : [];
 
-  const handleNextImage = useCallback((e?: React.MouseEvent) => {
+  const handleNextImage = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (selectedImgIndex === null) return;
-    setSelectedImgIndex((prev) => (prev! + 1) % allImages.length);
-  }, [selectedImgIndex, allImages.length]);
+    setSelectedImgIndex((prev) =>
+      prev === null ? prev : (prev + 1) % allImages.length
+    );
+  };
 
-  const handlePrevImage = useCallback((e?: React.MouseEvent) => {
+  const handlePrevImage = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (selectedImgIndex === null) return;
-    setSelectedImgIndex((prev) => (prev! - 1 + allImages.length) % allImages.length);
-  }, [selectedImgIndex, allImages.length]);
+    setSelectedImgIndex((prev) =>
+      prev === null ? prev : (prev - 1 + allImages.length) % allImages.length
+    );
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedImgIndex !== null) {
-        if (e.key === "ArrowRight") handleNextImage();
-        if (e.key === "ArrowLeft") handlePrevImage();
+        if (e.key === "ArrowRight") {
+          setSelectedImgIndex((prev) =>
+            prev === null ? prev : (prev + 1) % allImages.length
+          );
+        }
+        if (e.key === "ArrowLeft") {
+          setSelectedImgIndex((prev) =>
+            prev === null ? prev : (prev - 1 + allImages.length) % allImages.length
+          );
+        }
         if (e.key === "Escape") setSelectedImgIndex(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedImgIndex, handleNextImage, handlePrevImage]);
+  }, [selectedImgIndex, allImages.length]);
 
   const timeStr = new Date(item.found_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -111,7 +121,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || `Like failed (${res.status})`);
       }
-    } catch (_err) {
+    } catch {
       toast.error("Network error — could not reach server");
     }
     setLiking(false);
@@ -197,13 +207,13 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
 
   return (
     <div
-      className={`group relative bg-white border border-slate-200/80 rounded-xl overflow-hidden transition-all duration-300 flex flex-col hover:shadow-md hover:border-slate-300 ${
+      className={`group relative flex flex-col overflow-hidden rounded-xl border border-border/75 bg-card/90 transition-all duration-300 hover:border-border hover:shadow-xl hover:shadow-slate-950/10 dark:hover:shadow-black/20 ${
         item.isLive
-          ? "animate-in fade-in slide-in-from-top-2 duration-500 ring-2 ring-emerald-500/30 shadow-emerald-100 shadow-md"
+          ? "animate-in slide-in-from-top-2 fade-in duration-500 ring-2 ring-emerald-500/30 shadow-md shadow-emerald-500/10"
           : ""
       }`}
     >
-      <div className="relative aspect-4/5 bg-slate-100 overflow-hidden">
+      <div className="relative aspect-4/5 overflow-hidden bg-muted">
         {item.image_url ? (
           item.extra_images && item.extra_images.length > 0 ? (
             <div className="w-full h-full flex gap-0.5">
@@ -222,7 +232,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                 {item.extra_images.slice(0, 2).map((img, idx) => (
                   <div
                     key={idx}
-                    className="flex-1 overflow-hidden bg-slate-200 cursor-pointer"
+                    className="flex-1 cursor-pointer overflow-hidden bg-muted-foreground/10"
                     onClick={() => setSelectedImgIndex(idx + 1)}
                   >
                     <img
@@ -249,17 +259,17 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
             </div>
           )
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-300">
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground/45">
             <ImageOff className="w-8 h-8" />
           </div>
         )}
 
         <div className="absolute bottom-2.5 right-2.5 flex flex-col items-end gap-1">
-          <span className="bg-white/95 backdrop-blur-sm shadow-sm text-slate-900 font-bold px-2.5 py-1 rounded-lg text-sm">
+          <span className="rounded-lg bg-background/92 px-2.5 py-1 text-sm font-bold text-foreground shadow-sm backdrop-blur-sm">
             {item.price}
           </span>
           {item.total_price && (
-            <span className="bg-slate-900/70 backdrop-blur-sm text-white/90 text-[12px] font-medium px-2 py-1 rounded-md">
+            <span className="rounded-md bg-slate-950/70 px-2 py-1 text-[12px] font-medium text-white/90 backdrop-blur-sm dark:bg-white/15">
               {item.total_price} inkl.
             </span>
           )}
@@ -268,8 +278,8 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
         {item.isLive && (
           <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-1 rounded-md shadow-lg">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500/50 dark:bg-emerald-400/50 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 dark:bg-emerald-400" />
             </span>
             NEW
           </div>
@@ -284,7 +294,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                 "w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md transition-colors cursor-pointer",
                 liked
                   ? "bg-red-500 text-white"
-                  : "bg-white/95 text-slate-600 hover:text-red-500 hover:bg-white"
+                  : "bg-background/92 text-muted-foreground hover:bg-background hover:text-red-500"
               )}
               title={liked ? "Unlike" : "Like"}
             >
@@ -299,7 +309,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                   e.preventDefault();
                   setOfferOpen(true);
                 }}
-                className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md bg-white/95 text-slate-600 hover:text-emerald-500 hover:bg-white transition-colors cursor-pointer"
+                className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center bg-background/92 text-muted-foreground shadow-md transition-colors hover:bg-background hover:text-emerald-500 cursor-pointer"
                 title="Make an offer"
               >
                 <Tag className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -310,7 +320,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                   e.preventDefault();
                   setMsgOpen(true);
                 }}
-                className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md bg-white/95 text-slate-600 hover:text-blue-500 hover:bg-white transition-colors cursor-pointer"
+                className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center bg-background/92 text-muted-foreground shadow-md transition-colors hover:bg-background hover:text-blue-500 cursor-pointer"
                 title="Send message to seller"
               >
                 <MessageCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -327,24 +337,24 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
               href={`/monitors/${item.monitor_id}`}
               className="hover:underline z-10"
             >
-              <span className="text-[11px] font-medium text-slate-400 hover:text-blue-600 transition-colors truncate max-w-35 block">
+              <span className="block max-w-35 truncate text-[11px] font-medium text-muted-foreground transition-colors hover:text-blue-400">
                 {item.monitor_name || `Monitor #${item.monitor_id}`}
               </span>
             </Link>
           ) : (
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[11px] font-mono text-muted-foreground">
               {timeStr}
             </span>
           )}
           {showMonitor && (
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[11px] font-mono text-muted-foreground">
               {timeStr}
             </span>
           )}
         </div>
 
         <h3
-          className="font-semibold text-[13px] leading-snug line-clamp-2 text-slate-800 min-h-10"
+          className="min-h-10 line-clamp-2 text-[13px] font-semibold leading-snug text-foreground"
           title={item.title || ""}
         >
           {item.title || "Untitled"}
@@ -352,30 +362,30 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
 
         <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
           {item.brand && (
-            <span className="text-[10px] px-1.5 h-5 flex items-center rounded bg-slate-50 text-slate-500 font-medium">
+            <span className="flex h-5 items-center rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               {item.brand}
             </span>
           )}
           {item.size && (
             <Badge
               variant="secondary"
-              className="text-[10px] px-1.5 h-5 font-normal bg-slate-100 text-slate-600 border-0"
+              className="h-5 border-0 bg-blue-500/12 px-1.5 text-[10px] font-normal text-blue-300"
             >
               {item.size}
             </Badge>
           )}
           {item.location && (
-            <span className="text-[10px] px-1.5 h-5 flex items-center rounded bg-slate-50 text-slate-500">
+            <span className="flex h-5 items-center rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
               {item.location}
             </span>
           )}
           {item.rating && (
-            <span className="text-[10px] px-1.5 h-5 flex items-center rounded bg-amber-50 text-amber-700 font-medium">
+            <span className="text-[10px] px-1.5 h-5 flex items-center rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 font-medium">
               {item.rating}
             </span>
           )}
           {item.condition && (
-            <span className="text-[10px] px-1.5 h-5 flex items-center rounded bg-slate-50 text-slate-500">
+            <span className="flex h-5 items-center rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
               {item.condition}
             </span>
           )}
@@ -386,7 +396,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
         href={item.url || "#"}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-1.5 bg-slate-900 text-white py-2.5 text-xs font-medium tracking-wide hover:bg-slate-800 transition-colors"
+        className="flex items-center justify-center gap-1.5 bg-primary py-2.5 text-xs font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
       >
         View on Vinted
         <ExternalLink className="w-3 h-3" />
@@ -397,10 +407,10 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
           <DialogHeader>
             <DialogTitle>Send Message</DialogTitle>
             <DialogDescription asChild>
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 <div className="flex gap-5 mb-4">
                   {item.image_url ? (
-                    <div className="relative w-20 h-24 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 shadow-sm">
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-border/80 bg-muted shadow-sm">
                       <img 
                         src={item.image_url} 
                         alt={item.title || "Item preview"} 
@@ -408,57 +418,57 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                       />
                     </div>
                   ) : (
-                    <div className="w-20 h-24 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                      <ImageOff className="w-8 h-8 text-slate-300" />
+                    <div className="flex h-24 w-20 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted">
+                      <ImageOff className="w-8 h-8 text-muted-foreground/45" />
                     </div>
                   )}
                   <div className="flex flex-col justify-center gap-1.5 min-w-0 overflow-hidden">
-                    <p className="font-semibold text-slate-900 line-clamp-2 leading-snug">
+                    <p className="line-clamp-2 font-semibold leading-snug text-foreground">
                       {item.title || "this item"}
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {item.brand && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-100 text-slate-600 font-medium">
+                        <span className="flex h-4.5 items-center rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                           {item.brand}
                         </span>
                       )}
                       {item.size && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-blue-50 text-blue-600 font-medium border border-blue-100/50">
+                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium border border-blue-100/50 dark:border-blue-500/20">
                           {item.size}
                         </span>
                       )}
                       {item.condition && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-50 text-slate-500 border border-slate-200/50">
+                        <span className="flex h-4.5 items-center rounded border border-border/70 bg-muted px-1.5 text-[10px] text-muted-foreground">
                           {item.condition}
                         </span>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {item.location && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-50 text-slate-400">
+                        <span className="flex h-4.5 items-center rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
                           {item.location}
                         </span>
                       )}
                       {item.rating && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-amber-50 text-amber-600 font-medium border border-amber-200/50">
+                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-200 dark:border-amber-500/20">
                           ★ {item.rating}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center mb-4">
-                  <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Price</span>
+                <div className="mb-4 flex items-center justify-between rounded-lg border border-border/70 bg-muted/45 p-2.5">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Price</span>
                   <div className="text-right">
-                    <span className="text-base font-bold text-slate-900">€{item.price || "0.00"}</span>
+                    <span className="text-base font-bold text-foreground">€{item.price || "0.00"}</span>
                     {item.total_price && item.total_price !== item.price && (
-                      <span className="block text-[10px] text-slate-400">
+                      <span className="block text-[10px] text-muted-foreground">
                         Incl. fees: €{item.total_price}
                       </span>
                     )}
                   </div>
                 </div>
-                <p className="text-slate-500">
+                <p className="text-muted-foreground">
                   Send a message to the seller of &quot;{item.title || "this item"}&quot;
                 </p>
               </div>
@@ -470,7 +480,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
             placeholder="Write your message..."
             maxLength={2000}
             rows={4}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 resize-none"
+            className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
           />
           <DialogFooter>
             <Button
@@ -494,10 +504,10 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
           <DialogHeader>
             <DialogTitle>Make an Offer</DialogTitle>
             <DialogDescription asChild>
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 <div className="flex gap-5 mb-3">
                   {item.image_url ? (
-                    <div className="relative w-20 h-24 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 shadow-sm">
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-border/80 bg-muted shadow-sm">
                       <img 
                         src={item.image_url} 
                         alt={item.title || "Item preview"} 
@@ -505,39 +515,39 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                       />
                     </div>
                   ) : (
-                    <div className="w-20 h-24 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                      <ImageOff className="w-8 h-8 text-slate-300" />
+                    <div className="flex h-24 w-20 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted">
+                      <ImageOff className="w-8 h-8 text-muted-foreground/45" />
                     </div>
                   )}
                   <div className="flex flex-col justify-center gap-1.5 min-w-0 overflow-hidden">
-                    <p className="font-semibold text-slate-900 line-clamp-2 leading-snug">
+                    <p className="line-clamp-2 font-semibold leading-snug text-foreground">
                       {item.title || "this item"}
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {item.brand && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-100 text-slate-600 font-medium">
+                        <span className="flex h-4.5 items-center rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                           {item.brand}
                         </span>
                       )}
                       {item.size && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-blue-50 text-blue-600 font-medium border border-blue-100/50">
+                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium border border-blue-100/50">
                           {item.size}
                         </span>
                       )}
                       {item.condition && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-50 text-slate-500 border border-slate-200/50">
+                        <span className="flex h-4.5 items-center rounded border border-border/70 bg-muted px-1.5 text-[10px] text-muted-foreground">
                           {item.condition}
                         </span>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {item.location && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-slate-50 text-slate-400">
+                        <span className="flex h-4.5 items-center rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
                           {item.location}
                         </span>
                       )}
                       {item.rating && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-amber-50 text-amber-600 font-medium border border-amber-200/50">
+                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-amber-50 dark:bg-amber-900/20 text-amber-600 font-medium border border-amber-200 dark:border-amber-900/50/50">
                           ★ {item.rating}
                         </span>
                       )}
@@ -545,12 +555,12 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
-                  <span className="text-xs font-medium uppercase tracking-wider text-slate-400">Original Price</span>
+                <div className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/45 p-2.5">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Original Price</span>
                   <div className="text-right">
-                    <span className="text-base font-bold text-slate-900">€{item.price || "0.00"}</span>
+                    <span className="text-base font-bold text-foreground">€{item.price || "0.00"}</span>
                     {item.total_price && item.total_price !== item.price && (
-                      <span className="block text-[10px] text-slate-400">
+                      <span className="block text-[10px] text-muted-foreground">
                         Incl. fees: €{item.total_price}
                       </span>
                     )}
@@ -560,7 +570,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">€</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
             <input
               type="number"
               step="0.01"
@@ -568,7 +578,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
               value={offerPrice}
               onChange={(e) => setOfferPrice(e.target.value)}
               placeholder={`e.g. ${(parseFloat(item.price || "0") * 0.9).toFixed(2)}`}
-              className="w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
+              className="w-full rounded-md border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
             />
           </div>
           <div className="flex gap-2 w-full pt-1">
@@ -583,7 +593,7 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setOfferPrice(discountedPrice)}
-                  className="flex-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  className="flex-1 text-xs"
                 >
                   -{discount}% (€{discountedPrice})
                 </Button>
@@ -648,18 +658,18 @@ export function ItemCard({ item, showMonitor = false }: ItemCardProps) {
 
 export function ItemCardSkeleton() {
   return (
-    <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden flex flex-col">
-      <div className="aspect-4/5 bg-slate-100 animate-pulse" />
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border/75 bg-card/85">
+      <div className="aspect-4/5 animate-pulse bg-muted" />
       <div className="p-3.5 space-y-2.5">
-        <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
-        <div className="h-4 bg-slate-100 rounded animate-pulse w-3/4" />
-        <div className="h-4 bg-slate-100 rounded animate-pulse w-1/2" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
         <div className="flex gap-1.5 pt-1">
-          <div className="h-5 w-10 bg-slate-100 rounded animate-pulse" />
-          <div className="h-5 w-14 bg-slate-100 rounded animate-pulse" />
+          <div className="h-5 w-10 animate-pulse rounded bg-muted" />
+          <div className="h-5 w-14 animate-pulse rounded bg-muted" />
         </div>
       </div>
-      <div className="h-10 bg-slate-200 animate-pulse" />
+      <div className="h-10 animate-pulse bg-muted-foreground/15" />
     </div>
   );
 }

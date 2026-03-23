@@ -22,15 +22,19 @@ export function CountryFilterPicker({ selected, onChange }: CountryFilterPickerP
       {REGIONS.map((region) => {
         const isSelected = selected.includes(region.code);
         return (
-          <Badge
+          <button
+            type="button"
             key={region.code}
-            variant={isSelected ? "default" : "outline"}
-            className="cursor-pointer transition-colors"
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+              isSelected
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-input hover:bg-muted"
+            }`}
             onClick={() => toggleRegion(region.code)}
           >
-            <span className="mr-1">{region.flag}</span>
+            <span>{region.flag}</span>
             {region.label}
-          </Badge>
+          </button>
         );
       })}
     </div>

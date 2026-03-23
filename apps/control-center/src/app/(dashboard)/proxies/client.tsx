@@ -113,14 +113,14 @@ export function ProxiesClient({
       </div>
 
       {userRole === "premium" && (
-        <Card className="border-amber-200/60 bg-amber-50/50">
+        <Card className="border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10">
           <CardContent className="p-4 flex items-center gap-3">
             <Shield className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <p className="text-[13px] font-medium text-amber-900">
+              <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200">
                 Premium Account
               </p>
-              <p className="text-[12px] text-amber-700">
+              <p className="text-[12px] text-amber-700 dark:text-amber-300">
                 You can use server proxies when creating monitors, or use your
                 own proxy groups.
               </p>
@@ -132,8 +132,8 @@ export function ProxiesClient({
       {groups.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="p-12 text-center">
-            <Globe className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-[15px] font-medium text-slate-600">
+            <Globe className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-[15px] font-medium text-muted-foreground">
               No proxy groups yet
             </p>
             <p className="text-[13px] text-muted-foreground mt-1">
@@ -153,25 +153,25 @@ export function ProxiesClient({
       ) : (
         <div className="space-y-3">
           {groups.map((group) => (
-            <Card key={group.id} className="border-slate-200/60">
+            <Card key={group.id} className="border-input/60">
               <CardContent className="p-0">
                 <div
-                  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+                  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() =>
                     setExpandedId(expandedId === group.id ? null : group.id)
                   }
                 >
                   <div className="flex items-center gap-3">
-                    <Server className="w-4 h-4 text-slate-400" />
+                    <Server className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-[14px] font-medium text-slate-800">
+                      <p className="text-[14px] font-medium text-foreground">
                         {group.name}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[12px] text-muted-foreground">
                           {getProxyCount(group.proxies)} proxies
                         </span>
-                        <span className="text-slate-200">·</span>
+                        <span className="text-muted-foreground/40">·</span>
                         <span className="text-[12px] text-muted-foreground">
                           {group.monitorCount} monitor
                           {group.monitorCount !== 1 ? "s" : ""}
@@ -183,7 +183,7 @@ export function ProxiesClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-red-500"
+                      className="h-8 w-8 text-muted-foreground hover:text-red-500"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(group.id);
@@ -192,15 +192,15 @@ export function ProxiesClient({
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                     {expandedId === group.id ? (
-                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
 
                 {expandedId === group.id && (
-                  <div className="border-t border-slate-100 px-5 py-4 space-y-3">
+                  <div className="border-t border-border px-5 py-4 space-y-3">
                     {editingId === group.id ? (
                       <>
                         <div className="space-y-2">
@@ -219,7 +219,7 @@ export function ProxiesClient({
                             value={editProxies}
                             onChange={(e) => setEditProxies(e.target.value)}
                             rows={6}
-                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-mono text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                             placeholder="http://user:pass@host:port"
                           />
                         </div>
@@ -241,8 +241,8 @@ export function ProxiesClient({
                       </>
                     ) : (
                       <>
-                        <div className="bg-slate-50 rounded-lg p-3">
-                          <pre className="text-[11px] font-mono text-slate-600 whitespace-pre-wrap break-all max-h-40 overflow-y-auto">
+                        <div className="bg-muted rounded-lg p-3">
+                          <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-all max-h-40 overflow-y-auto">
                             {group.proxies
                               .split("\n")
                               .filter((l) => l.trim())
@@ -309,7 +309,7 @@ export function ProxiesClient({
                 id="proxies"
                 rows={8}
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] font-mono text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                 placeholder={
                   "http://user:pass@host:port\nhttp://user:pass@host:port\n\nSupported formats:\nhttp://user:pass@host:port\nsocks5://user:pass@host:port\nhost:port:user:pass"
                 }

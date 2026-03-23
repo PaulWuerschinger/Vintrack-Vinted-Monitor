@@ -41,13 +41,13 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
           {selected.map((id) => (
             <span
               key={id}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[12px] text-slate-700 border border-slate-200"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[12px] text-primary-foreground border border-primary"
             >
               {findLabel(id)}
               <button
                 type="button"
                 onClick={() => onChange(selected.filter((s) => s !== id))}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-muted-foreground"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -56,7 +56,7 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
         </div>
       )}
 
-      <div className="border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+      <div className="border border-input rounded-lg overflow-hidden max-h-60 overflow-y-auto">
         {CATEGORIES.map((group) => (
           <div key={group.id}>
             <div className="flex items-center border-b border-slate-100 last:border-b-0">
@@ -66,11 +66,11 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
                 className={cn(
                   "shrink-0 w-8 h-9 flex items-center justify-center border-r border-slate-100",
                   isSelected(group.id)
-                    ? "bg-slate-900 text-white"
-                    : "bg-white hover:bg-slate-50 text-slate-300"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted text-slate-300"
                 )}
               >
-                {isSelected(group.id) && <Check className="w-3.5 h-3.5" />}
+                {isSelected(group.id) && <Check className="w-3.5 h-3.5 text-primary" />}
               </button>
               <button
                 type="button"
@@ -79,7 +79,7 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
                     expandedGroup === group.id ? null : group.id
                   )
                 }
-                className="flex-1 flex items-center justify-between px-3 h-9 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                className="flex-1 flex items-center justify-between px-3 h-9 text-[13px] font-medium text-foreground hover:bg-muted transition-colors"
               >
                 {group.label}
                 <ChevronRight
@@ -92,7 +92,7 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
             </div>
 
             {expandedGroup === group.id && group.children.length > 0 && (
-              <div className="bg-slate-50/50">
+              <div className="bg-muted/50">
                 {group.children.map((child) => (
                   <button
                     key={child.id}
@@ -101,16 +101,16 @@ export function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
                     className={cn(
                       "w-full flex items-center gap-2.5 pl-11 pr-3 h-8 text-[12px] border-b border-slate-100/80 last:border-b-0 transition-colors",
                       isSelected(child.id)
-                        ? "text-slate-900 font-medium bg-slate-100/60"
-                        : "text-slate-600 hover:bg-slate-100/40"
+                        ? "text-foreground font-medium bg-muted/60"
+                        : "text-muted-foreground hover:bg-muted/40"
                     )}
                   >
                     <span
                       className={cn(
                         "w-4 h-4 rounded border flex items-center justify-center shrink-0",
                         isSelected(child.id)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-300 bg-white"
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "border-border bg-background"
                       )}
                     >
                       {isSelected(child.id) && (

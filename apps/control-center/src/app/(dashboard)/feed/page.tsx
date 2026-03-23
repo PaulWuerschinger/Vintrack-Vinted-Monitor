@@ -81,7 +81,7 @@ export default function FeedPage() {
             Real-time stream across all your monitors.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-emerald-600 font-medium bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 self-start rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 sm:self-auto">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -99,14 +99,14 @@ export default function FeedPage() {
       </div>
 
       {items.length === 0 && !loading && (
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-          <div className="bg-slate-100 p-3 rounded-xl mb-4">
-            <Search className="w-6 h-6 text-slate-400" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card/75 py-20 shadow-sm backdrop-blur">
+          <div className="mb-4 rounded-xl bg-muted p-3">
+            <Search className="w-6 h-6 text-muted-foreground" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800">
+          <h3 className="text-base font-semibold text-foreground">
             Waiting for items...
           </h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm text-center">
+          <p className="mt-1 max-w-sm text-center text-sm text-muted-foreground">
             New items will appear here in real-time as your monitors find them.
           </p>
         </div>

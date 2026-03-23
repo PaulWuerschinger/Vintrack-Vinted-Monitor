@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { usePathname } from "next/navigation";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -17,17 +16,12 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50">
+    <div className="flex min-h-screen bg-transparent">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -38,7 +32,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex-1 lg:ml-60 flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col lg:ml-60">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           <div className="max-w-350 mx-auto">
