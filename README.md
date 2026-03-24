@@ -114,6 +114,7 @@ Two-tier proxy architecture designed for scale:
 - Automatic rotation with `tls-client` TLS fingerprint spoofing
 - Input validation — garbage lines are silently skipped
 - Supports `http://`, `https://`, `socks4://`, `socks5://`, and `host:port:user:pass` formats
+- Note: `vinted.co.uk` does not support IPv6 proxies. Use IPv4 proxies for UK monitors.
 
 ### Multi-User & Roles
 Built-in role system with Discord OAuth:
@@ -223,6 +224,7 @@ Built-in role system with Discord OAuth:
 ### Proxy Recommendation (Referral)
 
 If you need affordable proxies, I can recommend **IPv6 proxies from Proxy6** — they are low-cost and come with **no data limit**. (For testing, for example, 1 Monitor ~5 proxies are more than enough).
+- Note: `vinted.co.uk` does not support IPv6 proxies. Use IPv4 proxies for UK monitors.
 
 - Referral link: https://proxy6.net/?r=864123
 - Alternative referral link: https://proxy6.net/a/864123
