@@ -185,10 +185,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 					log.Printf("[%d] paused via dashboard", m.ID)
 					return
 				}
-				if updated.Query != m.Query || updated.Region != m.Region ||
-					(updated.Proxies.Valid != m.Proxies.Valid) ||
-					(updated.Proxies.Valid && updated.Proxies.String != m.Proxies.String) {
-					log.Printf("[%d] config changed (query/region/proxy), will be restarted by sync loop", m.ID)
+				if monitorConfigFingerprint(updated) != monitorConfigFingerprint(m) {
+					log.Printf("[%d] config changed, will be restarted by sync loop", m.ID)
 					return
 				}
 				m.DiscordWebhook = updated.DiscordWebhook
@@ -241,7 +239,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 							for i := 0; i < n; i++ {
 								select {
 								case r := <-ch:
-									if r.status == 403 {
+									if shouldReplaceClientForStatus(r.status) {
+										r.client.ResetWarm(domain)
 										p.Replace(r.client)
 									}
 								case <-drain.C:
@@ -251,7 +250,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 						}(resultCh, remaining, pool)
 					}
 					break collectLoop
-				} else if r.status == 403 {
+				} else if shouldReplaceClientForStatus(r.status) {
+					r.client.ResetWarm(domain)
 					pool.Replace(r.client)
 				} else if r.status != 0 && (checks <= 3 || checks%5 == 0) {
 					log.Printf("[%d] fetch status for %s via %s: %d", m.ID, domain, r.client.ProxyLabel(), r.status)
@@ -264,7 +264,8 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 						for i := 0; i < n; i++ {
 							select {
 							case r := <-ch:
-								if r.status == 403 {
+								if shouldReplaceClientForStatus(r.status) {
+									r.client.ResetWarm(domain)
 									p.Replace(r.client)
 								}
 							case <-drain.C:
