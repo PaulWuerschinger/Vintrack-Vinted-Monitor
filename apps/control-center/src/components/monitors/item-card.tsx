@@ -30,7 +30,7 @@ export type ItemData = {
   image_url: string | null;
   extra_images?: string[] | null;
   found_at: string;
-  monitor_name?: string;
+  monitor_name?: string | null;
   isLive?: boolean;
   location: string | null;
   rating: string | null;
@@ -40,6 +40,11 @@ export type ItemData = {
 interface ItemCardProps {
   item: ItemData;
   showMonitor?: boolean;
+}
+
+function getMonitorLabel(item: ItemData) {
+  const name = item.monitor_name?.trim();
+  return name ? `${name} (${item.monitor_id})` : `Monitor #${item.monitor_id}`;
 }
 
 function ItemCardComponent({ item, showMonitor = false }: ItemCardProps) {
@@ -338,7 +343,7 @@ function ItemCardComponent({ item, showMonitor = false }: ItemCardProps) {
               className="hover:underline z-10"
             >
               <span className="block max-w-35 truncate text-[11px] font-medium text-muted-foreground transition-colors hover:text-blue-400">
-                {item.monitor_name || `Monitor #${item.monitor_id}`}
+                {getMonitorLabel(item)}
               </span>
             </Link>
           ) : (

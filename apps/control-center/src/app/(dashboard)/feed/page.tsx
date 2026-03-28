@@ -34,8 +34,7 @@ export default function FeedPage() {
         const liveItem: ItemData = {
           ...newItem,
           isLive: true,
-          monitor_name:
-            newItem.monitor_name || `Monitor #${newItem.monitor_id}`,
+          monitor_name: newItem.monitor_name || null,
         };
 
         setItems((prev) => {
@@ -45,6 +44,7 @@ export default function FeedPage() {
             const existing = prev[existingIdx];
             const merged = {
               ...existing,
+              monitor_name: newItem.monitor_name || existing.monitor_name,
               location: newItem.location || existing.location,
               rating: newItem.rating || existing.rating,
               seller_id: newItem.seller_id || existing.seller_id,
