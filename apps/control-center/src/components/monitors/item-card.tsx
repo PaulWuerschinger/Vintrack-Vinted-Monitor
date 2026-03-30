@@ -544,7 +544,7 @@ function ItemCardComponent({ item, showMonitor = false }: ItemCardProps) {
                         </span>
                       )}
                       {item.size && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium border border-blue-100/50">
+                        <span className="flex h-4.5 items-center rounded border border-blue-500/20 bg-blue-500/10 px-1.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
                           {item.size}
                         </span>
                       )}
@@ -561,7 +561,7 @@ function ItemCardComponent({ item, showMonitor = false }: ItemCardProps) {
                         </span>
                       )}
                       {item.rating && (
-                        <span className="text-[10px] px-1.5 h-4.5 flex items-center rounded bg-amber-50 dark:bg-amber-900/20 text-amber-600 font-medium border border-amber-200 dark:border-amber-900/50/50">
+                        <span className="flex h-4.5 items-center rounded border border-amber-200/70 bg-amber-50 px-1.5 text-[10px] font-medium text-amber-600 dark:border-amber-500/20 dark:bg-amber-900/20 dark:text-amber-400">
                           ★ {item.rating}
                         </span>
                       )}
