@@ -116,7 +116,7 @@ function NotificationBell() {
             void fetchNotifications();
           }
         }}
-        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-background/70 text-foreground transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 shadow-sm bg-background/70 text-foreground transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
         aria-label="Open Vinted notifications"
       >
         <Bell className="h-4 w-4" />

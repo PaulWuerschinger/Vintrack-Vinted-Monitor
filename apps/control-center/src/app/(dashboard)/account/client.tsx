@@ -399,7 +399,7 @@ export function AccountClient({
               </div>
               <Badge
                 variant="secondary"
-                className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-500/30 text-amber-700 dark:text-amber-400"
               >
                 Coming Soon
               </Badge>
