@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, PlusCircle, Radio, LogOut, Globe, Shield, User, Star, BookOpen, X, Heart, MessageCircle } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Radio, LogOut, Globe, Shield, User, Star, BookOpen, X, Heart, MessageCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -130,6 +130,19 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-widest text-sidebar-foreground/40">
             Community
           </p>
+          <a
+            href="https://discord.gg/WbEpEjaWjP"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-blue-500 transition-colors hover:bg-blue-500/12 hover:text-blue-400"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Join Discord
+            <span className="rounded-full bg-blue-500 text-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+              New
+            </span>
+            <ExternalLink className="ml-auto w-3.5 h-3.5 opacity-70" />
+          </a>
           <a
             href="https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor"
             target="_blank"
