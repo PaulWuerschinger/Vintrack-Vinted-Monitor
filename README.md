@@ -34,6 +34,7 @@
   <a href="#live-demo">Live Demo</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#features">Features</a> •
+  <a href="#community--support">Community</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#screenshots">Screenshots</a> •
   <a href="#self-hosting">Self-Hosting</a> •
@@ -123,6 +124,16 @@ Built-in role system with Discord OAuth:
 | **Free** | ❌ | ✅ | ❌ |
 | **Premium** | ✅ | ✅ | ❌ |
 | **Admin** | ✅ | ✅ | ✅ |
+
+---
+
+## Community & Support
+
+Need help, want to exchange setups with other users, or report a bug?
+
+- Join the Vintrack Discord server: https://discord.gg/WbEpEjaWjP
+- Use the server for community support, feature feedback, setup questions, and bug reports
+- For reproducible code issues, GitHub issues and PRs are still welcome
 
 ---
 
