@@ -243,7 +243,7 @@ If you need proxies, I currently recommend **Webshare Proxy Server** as the bett
 
 ```bash
 # 1. Clone
-git clone https://github.com/YOUR_USERNAME/vintrack.git
+git clone https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor
 cd vintrack
 
 # 2. Configure
