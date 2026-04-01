@@ -234,12 +234,10 @@ Need help, want to exchange setups with other users, or report a bug?
 
 ### Proxy Recommendation (Referral)
 
-If you need affordable proxies, I can recommend **IPv6 proxies from Proxy6** — they are low-cost and come with **no data limit**. (For testing, for example, 1 Monitor ~5 proxies are more than enough).
-- Note: `vinted.co.uk` does not support IPv6 proxies. Use IPv4 proxies for UK monitors.
+If you need proxies, I currently recommend **Webshare Proxy Server** as the better option. Webshare also offers a small amount of free proxies, which can be enough for short initial tests.
 
-- Referral link: https://proxy6.net/?r=864123
-- Alternative referral link: https://proxy6.net/a/864123
-- Affiliate code: `DHCenDeFUI`
+- Referral link: https://www.webshare.io/?referral_code=qhu9q567qrqp
+- You can check your proxies here to see whether they work with Vinted: https://proxy6.net/checker
 
 ### Quick Start
 
