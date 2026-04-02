@@ -15,6 +15,7 @@ type Monitor struct {
 	CatalogIDs           *string
 	BrandIDs             *string
 	ColorIDs             *string
+	StatusIDs            *string
 	Region               string
 	AllowedCountries     *string
 	Status               string
