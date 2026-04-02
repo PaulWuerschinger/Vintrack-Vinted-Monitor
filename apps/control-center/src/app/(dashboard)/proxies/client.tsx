@@ -3,6 +3,7 @@
 import {
   createProxyGroup,
   deleteProxyGroup,
+  resetProxyGroupBandwidth,
   updateProxyGroup,
 } from "@/actions/proxy-groups";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,10 @@ import {
   ChevronDown,
   ChevronUp,
   Globe,
+  HardDriveDownload,
+  HardDriveUpload,
   Plus,
+  RotateCcw,
   Server,
   Shield,
   Trash2,
@@ -34,8 +38,40 @@ export type ProxyGroup = {
   name: string;
   proxies: string;
   monitorCount: number;
+  bandwidthRxBytes: string;
+  bandwidthTxBytes: string;
+  bandwidthLimitBytes: string | null;
+  bandwidthResetAt: string | null;
   created_at: string;
 };
+
+function formatBytes(value: bigint) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = Number(value);
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  const digits = size >= 100 || unitIndex === 0 ? 0 : size >= 10 ? 1 : 2;
+  return `${size.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}
+
+function formatLimitInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const limitGb = Number(value) / (1024 * 1024 * 1024);
+  return Number.isInteger(limitGb) ? String(limitGb) : limitGb.toFixed(2);
+}
 
 export function ProxiesClient({
   initialGroups,
@@ -50,6 +86,7 @@ export function ProxiesClient({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editProxies, setEditProxies] = useState("");
+  const [editBandwidthLimitGb, setEditBandwidthLimitGb] = useState("");
 
   const handleCreate = async (formData: FormData) => {
     try {
@@ -58,8 +95,8 @@ export function ProxiesClient({
       toast.success("Proxy group created");
       // Refresh page to get updated data
       window.location.reload();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create proxy group");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to create proxy group"));
     }
   };
 
@@ -68,8 +105,8 @@ export function ProxiesClient({
       await deleteProxyGroup(id);
       setGroups((prev) => prev.filter((g) => g.id !== id));
       toast.success("Proxy group deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete proxy group");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to delete proxy group"));
     }
   };
 
@@ -78,16 +115,50 @@ export function ProxiesClient({
       const formData = new FormData();
       formData.set("name", editName);
       formData.set("proxies", editProxies);
+      formData.set("bandwidth_limit_gb", editBandwidthLimitGb);
       await updateProxyGroup(id, formData);
       setGroups((prev) =>
         prev.map((g) =>
-          g.id === id ? { ...g, name: editName, proxies: editProxies } : g,
+          g.id === id
+            ? {
+                ...g,
+                name: editName,
+                proxies: editProxies,
+                bandwidthLimitBytes:
+                  editBandwidthLimitGb.trim().length > 0
+                    ? (
+                        BigInt(Math.round(Number(editBandwidthLimitGb) * 1024 * 1024 * 1024))
+                      ).toString()
+                    : null,
+              }
+            : g,
         ),
       );
       setEditingId(null);
       toast.success("Proxy group updated");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update proxy group");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to update proxy group"));
+    }
+  };
+
+  const handleResetBandwidth = async (id: number) => {
+    try {
+      await resetProxyGroupBandwidth(id);
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === id
+            ? {
+                ...g,
+                bandwidthRxBytes: "0",
+                bandwidthTxBytes: "0",
+                bandwidthResetAt: new Date().toISOString(),
+              }
+            : g,
+        ),
+      );
+      toast.success("Bandwidth reset");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to reset bandwidth"));
     }
   };
 
@@ -152,9 +223,21 @@ export function ProxiesClient({
         </Card>
       ) : (
         <div className="space-y-3">
-          {groups.map((group) => (
-            <Card key={group.id} className="border-input/60">
-              <CardContent className="p-0">
+          {groups.map((group) => {
+            const rxBytes = BigInt(group.bandwidthRxBytes);
+            const txBytes = BigInt(group.bandwidthTxBytes);
+            const totalBytes = rxBytes + txBytes;
+            const limitBytes = group.bandwidthLimitBytes
+              ? BigInt(group.bandwidthLimitBytes)
+              : null;
+            const usagePercent =
+              limitBytes && limitBytes > BigInt(0)
+                ? Math.min(100, Number((totalBytes * BigInt(100)) / limitBytes))
+                : null;
+
+            return (
+              <Card key={group.id} className="border-input/60">
+                <CardContent className="p-0">
                 <div
                   className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() =>
@@ -176,7 +259,27 @@ export function ProxiesClient({
                           {group.monitorCount} monitor
                           {group.monitorCount !== 1 ? "s" : ""}
                         </span>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span className="text-[12px] text-muted-foreground">
+                          {formatBytes(totalBytes)} traffic
+                        </span>
                       </div>
+                      {limitBytes && limitBytes > BigInt(0) && (
+                        <div className="mt-2 w-full max-w-xs">
+                          <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>
+                              {formatBytes(totalBytes)} / {formatBytes(limitBytes)}
+                            </span>
+                            <span>{usagePercent}%</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-foreground transition-all"
+                              style={{ width: `${usagePercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -201,6 +304,73 @@ export function ProxiesClient({
 
                 {expandedId === group.id && (
                   <div className="border-t border-border px-5 py-4 space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-muted/40 p-3">
+                        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                          <Server className="h-3.5 w-3.5" />
+                          Total
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-foreground">
+                          {formatBytes(
+                            BigInt(group.bandwidthRxBytes) +
+                              BigInt(group.bandwidthTxBytes),
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/40 p-3">
+                        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                          <HardDriveDownload className="h-3.5 w-3.5" />
+                          Download
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-foreground">
+                          {formatBytes(BigInt(group.bandwidthRxBytes))}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/40 p-3">
+                        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                          <HardDriveUpload className="h-3.5 w-3.5" />
+                          Upload
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-foreground">
+                          {formatBytes(BigInt(group.bandwidthTxBytes))}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[12px] text-muted-foreground">
+                            Bandwidth limit
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
+                            {limitBytes && limitBytes > BigInt(0)
+                              ? formatBytes(limitBytes)
+                              : "No limit"}
+                          </p>
+                        </div>
+                        {limitBytes && limitBytes > BigInt(0) && (
+                          <p className="text-[12px] text-muted-foreground">
+                            Remaining: {formatBytes(limitBytes - totalBytes > BigInt(0) ? limitBytes - totalBytes : BigInt(0))}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                      <p className="text-[12px] text-muted-foreground">
+                        {group.bandwidthResetAt
+                          ? `Last reset: ${new Date(group.bandwidthResetAt).toLocaleString()}`
+                          : "No reset yet"}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => handleResetBandwidth(group.id)}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Reset traffic
+                      </Button>
+                    </div>
                     {editingId === group.id ? (
                       <>
                         <div className="space-y-2">
@@ -221,6 +391,20 @@ export function ProxiesClient({
                             rows={6}
                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                             placeholder="http://user:pass@host:port"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[12px]">
+                            Bandwidth Limit (GB)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={editBandwidthLimitGb}
+                            onChange={(e) => setEditBandwidthLimitGb(e.target.value)}
+                            className="text-[13px]"
+                            placeholder="Leave empty for no limit"
                           />
                         </div>
                         <div className="flex gap-2">
@@ -266,6 +450,7 @@ export function ProxiesClient({
                             setEditingId(group.id);
                             setEditName(group.name);
                             setEditProxies(group.proxies);
+                            setEditBandwidthLimitGb(formatLimitInput(group.bandwidthLimitBytes));
                           }}
                         >
                           Edit
@@ -274,9 +459,10 @@ export function ProxiesClient({
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -316,6 +502,22 @@ export function ProxiesClient({
               />
               <p className="text-[12px] text-muted-foreground">
                 One proxy per line. Supports HTTP, HTTPS, and SOCKS5.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bandwidth_limit_gb" className="text-[13px]">
+                Bandwidth Limit (GB)
+              </Label>
+              <Input
+                name="bandwidth_limit_gb"
+                id="bandwidth_limit_gb"
+                type="number"
+                min="0"
+                step="0.1"
+                placeholder="Optional"
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Optional. Monitors using this group will pause automatically once the limit is reached.
               </p>
             </div>
             <DialogFooter>
