@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteMonitorAndReturn, updateMonitor, testDiscordWebhook } from "@/actions/monitor";
+import { deleteMonitorAndReturn, updateMonitorAndReturn, testDiscordWebhook } from "@/actions/monitor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { StatusPicker } from "@/components/monitors/status-picker";
 import { ArrowLeft, Loader2, Save, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 type ProxyGroupOption = {
@@ -43,7 +43,9 @@ type MonitorData = {
 export default function EditMonitorPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const monitorId = Number(params.id);
+  const returnTo = searchParams.get("from") === "dashboard" ? "dashboard" : "detail";
 
   const [monitor, setMonitor] = useState<MonitorData | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -120,7 +122,6 @@ export default function EditMonitorPage() {
     );
   }
 
-  const boundUpdate = updateMonitor.bind(null, monitorId);
   const handleDelete = async () => {
     await toast.promise(deleteMonitorAndReturn(monitorId), {
       loading: "Deleting monitor...",
@@ -129,6 +130,20 @@ export default function EditMonitorPage() {
     });
 
     router.push("/dashboard");
+    router.refresh();
+  };
+
+  const handleSave = async (formData: FormData) => {
+    const savePromise = updateMonitorAndReturn(monitorId, formData);
+
+    await toast.promise(savePromise, {
+      loading: "Saving changes...",
+      success: "Saved successfully",
+      error: "Failed to save changes",
+    });
+
+    const result = await savePromise;
+    router.push(result.redirectTo);
     router.refresh();
   };
 
@@ -150,7 +165,8 @@ export default function EditMonitorPage() {
 
       <Card className="border-input/60">
         <CardContent className="p-6">
-          <form action={boundUpdate} className="space-y-6">
+          <form action={handleSave} className="space-y-6">
+            <input type="hidden" name="return_to" value={returnTo} />
             <div className="space-y-2">
               <Label htmlFor="query" className="text-[13px]">
                 Search Query
@@ -415,7 +431,7 @@ export default function EditMonitorPage() {
               </Button>
 
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Link href={`/monitors/${monitorId}`}>
+                <Link href={returnTo === "dashboard" ? "/dashboard" : `/monitors/${monitorId}`}>
                   <Button type="button" variant="outline" className="w-full sm:w-auto">
                     Cancel
                   </Button>

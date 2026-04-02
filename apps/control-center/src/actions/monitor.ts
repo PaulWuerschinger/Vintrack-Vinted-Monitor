@@ -131,6 +131,7 @@ export async function updateMonitor(id: number, formData: FormData) {
   const statusIds = (formData.get("status_ids") as string) || null;
   const region = (formData.get("region") as string) || "de";
   const allowedCountries = (formData.get("allowed_countries") as string) || null;
+  const returnTo = (formData.get("return_to") as string) || "detail";
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
   const proxyGroupRaw = formData.get("proxy_group_id") as string;
 
@@ -191,7 +192,95 @@ export async function updateMonitor(id: number, formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath(`/monitors/${id}`);
+  revalidatePath(`/monitors/${id}/edit`);
+
+  if (returnTo === "dashboard") {
+    redirect("/dashboard");
+  }
+
   redirect(`/monitors/${id}`);
+}
+
+export async function updateMonitorAndReturn(id: number, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const query = formData.get("query") as string;
+  const priceMin = formData.get("price_min") ? Number(formData.get("price_min")) : null;
+  const priceMax = formData.get("price_max") ? Number(formData.get("price_max")) : null;
+  const sizeId = formData.get("size_id") as string;
+  const catalogIds = (formData.get("catalog_ids") as string) || null;
+  const brandIds = (formData.get("brand_ids") as string) || null;
+  const colorIds = (formData.get("color_ids") as string) || null;
+  const statusIds = (formData.get("status_ids") as string) || null;
+  const region = (formData.get("region") as string) || "de";
+  const allowedCountries = (formData.get("allowed_countries") as string) || null;
+  const returnTo = (formData.get("return_to") as string) || "detail";
+  const discordWebhook = (formData.get("discord_webhook") as string) || null;
+  const proxyGroupRaw = formData.get("proxy_group_id") as string;
+
+  if (!query || query.trim().length === 0) throw new Error("Query is required");
+  if (query.length > 255) throw new Error("Query is too long");
+
+  const existing = await db.monitors.findFirst({
+    where: { id, userId: session.user.id },
+  });
+  if (!existing) throw new Error("Monitor not found");
+
+  let proxyGroupId: number | null = null;
+
+  if (proxyGroupRaw && proxyGroupRaw !== "server") {
+    const pgId = parseInt(proxyGroupRaw);
+    if (!isNaN(pgId)) {
+      const group = await db.proxy_groups.findFirst({
+        where: { id: pgId, userId: session.user.id },
+      });
+      if (!group) throw new Error("Invalid proxy group");
+      proxyGroupId = pgId;
+    }
+  } else if (proxyGroupRaw === "server") {
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (user?.role !== "premium" && user?.role !== "admin") {
+      throw new Error("Server proxies require a premium account");
+    }
+    proxyGroupId = null;
+  }
+
+  const urlToSave = discordWebhook?.trim() || null;
+  if (urlToSave && !isValidDiscordWebhook(urlToSave)) {
+    throw new Error("Invalid Discord Webhook URL");
+  }
+
+  await db.monitors.update({
+    where: { id, userId: session.user.id },
+    data: {
+      query,
+      price_min: priceMin,
+      price_max: priceMax,
+      size_id: sizeId,
+      catalog_ids: catalogIds || null,
+      brand_ids: brandIds || null,
+      color_ids: colorIds || null,
+      status_ids: statusIds || null,
+      region,
+      allowed_countries: allowedCountries || null,
+      discord_webhook: urlToSave,
+      proxy_group_id: proxyGroupId,
+      ...(urlToSave ? { webhook_active: true } : {}),
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/monitors/${id}`);
+  revalidatePath(`/monitors/${id}/edit`);
+
+  return {
+    success: true,
+    redirectTo: returnTo === "dashboard" ? "/dashboard" : `/monitors/${id}`,
+  };
 }
 
 export async function toggleMonitorStatus(id: number, currentStatus: string) {

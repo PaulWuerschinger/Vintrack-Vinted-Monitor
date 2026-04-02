@@ -337,7 +337,7 @@ export function DashboardClient({
                     </div>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
-                    <Link href={`/monitors/${m.id}/edit`}>
+                    <Link href={`/monitors/${m.id}/edit?from=dashboard`}>
                       <button
                         className="rounded-md p-1.5 text-muted-foreground/55 transition-colors hover:bg-accent hover:text-accent-foreground"
                         title="Edit monitor"
