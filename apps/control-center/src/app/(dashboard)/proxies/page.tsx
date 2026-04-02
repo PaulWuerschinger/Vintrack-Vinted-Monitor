@@ -27,6 +27,10 @@ export default async function ProxiesPage() {
         name: g.name,
         proxies: g.proxies,
         monitorCount: g._count.monitors,
+        bandwidthRxBytes: g.bandwidth_rx_bytes.toString(),
+        bandwidthTxBytes: g.bandwidth_tx_bytes.toString(),
+        bandwidthLimitBytes: g.bandwidth_limit_bytes?.toString() ?? null,
+        bandwidthResetAt: g.bandwidth_reset_at?.toISOString() ?? null,
         created_at: g.created_at?.toISOString() ?? "",
       }))}
       userRole={user?.role ?? "free"}

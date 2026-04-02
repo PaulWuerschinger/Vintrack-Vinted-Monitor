@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 const VALID_SCHEMES = ["http", "https", "socks4", "socks5"];
+const BYTES_PER_GB = 1024 * 1024 * 1024;
 
 function validateProxyLine(line: string): string | null {
   line = line.trim();
@@ -54,6 +55,25 @@ function validateProxies(text: string) {
   return { valid, invalid, total: lines.length };
 }
 
+function parseBandwidthLimitBytes(formData: FormData) {
+  const rawValue = (formData.get("bandwidth_limit_gb") as string | null)?.trim();
+
+  if (!rawValue) {
+    return null;
+  }
+
+  const limitGb = Number(rawValue);
+  if (!Number.isFinite(limitGb) || limitGb < 0) {
+    throw new Error("Bandwidth limit must be a positive number");
+  }
+
+  if (limitGb === 0) {
+    return null;
+  }
+
+  return BigInt(Math.round(limitGb * BYTES_PER_GB));
+}
+
 export async function getProxyGroups() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -73,6 +93,7 @@ export async function createProxyGroup(formData: FormData) {
 
   const name = (formData.get("name") as string)?.trim();
   const proxies = (formData.get("proxies") as string)?.trim();
+  const bandwidthLimitBytes = parseBandwidthLimitBytes(formData);
 
   if (!name || !proxies) throw new Error("Name and proxies are required");
 
@@ -87,6 +108,7 @@ export async function createProxyGroup(formData: FormData) {
       userId: session.user.id,
       name,
       proxies: valid.join("\n"),
+      bandwidth_limit_bytes: bandwidthLimitBytes,
     },
   });
 
@@ -120,6 +142,7 @@ export async function updateProxyGroup(id: number, formData: FormData) {
 
   const name = (formData.get("name") as string)?.trim();
   const proxies = (formData.get("proxies") as string)?.trim();
+  const bandwidthLimitBytes = parseBandwidthLimitBytes(formData);
 
   if (!name || !proxies) throw new Error("Name and proxies are required");
 
@@ -131,7 +154,27 @@ export async function updateProxyGroup(id: number, formData: FormData) {
 
   await db.proxy_groups.update({
     where: { id, userId: session.user.id },
-    data: { name, proxies: valid.join("\n") },
+    data: {
+      name,
+      proxies: valid.join("\n"),
+      bandwidth_limit_bytes: bandwidthLimitBytes,
+    },
+  });
+
+  revalidatePath("/proxies");
+}
+
+export async function resetProxyGroupBandwidth(id: number) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.proxy_groups.update({
+    where: { id, userId: session.user.id },
+    data: {
+      bandwidth_rx_bytes: BigInt(0),
+      bandwidth_tx_bytes: BigInt(0),
+      bandwidth_reset_at: new Date(),
+    },
   });
 
   revalidatePath("/proxies");
