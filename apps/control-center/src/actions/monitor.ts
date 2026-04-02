@@ -20,6 +20,7 @@ export async function createMonitor(formData: FormData) {
   const catalogIds = (formData.get("catalog_ids") as string) || null;
   const brandIds = (formData.get("brand_ids") as string) || null;
   const colorIds = (formData.get("color_ids") as string) || null;
+  const statusIds = (formData.get("status_ids") as string) || null;
   const region = (formData.get("region") as string) || "de";
   const allowedCountries = (formData.get("allowed_countries") as string) || null;
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
@@ -73,6 +74,7 @@ export async function createMonitor(formData: FormData) {
       catalog_ids: catalogIds || null,
       brand_ids: brandIds || null,
       color_ids: colorIds || null,
+      status_ids: statusIds || null,
       region,
       allowed_countries: allowedCountries || null,
       discord_webhook: urlToSave,
@@ -126,6 +128,7 @@ export async function updateMonitor(id: number, formData: FormData) {
   const catalogIds = (formData.get("catalog_ids") as string) || null;
   const brandIds = (formData.get("brand_ids") as string) || null;
   const colorIds = (formData.get("color_ids") as string) || null;
+  const statusIds = (formData.get("status_ids") as string) || null;
   const region = (formData.get("region") as string) || "de";
   const allowedCountries = (formData.get("allowed_countries") as string) || null;
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
@@ -177,6 +180,7 @@ export async function updateMonitor(id: number, formData: FormData) {
       catalog_ids: catalogIds || null,
       brand_ids: brandIds || null,
       color_ids: colorIds || null,
+      status_ids: statusIds || null,
       region,
       allowed_countries: allowedCountries || null,
       discord_webhook: urlToSave,

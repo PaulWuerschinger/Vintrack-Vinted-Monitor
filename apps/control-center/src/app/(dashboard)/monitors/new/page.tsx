@@ -11,6 +11,7 @@ import { SizePicker } from "@/components/monitors/size-picker";
 import { RegionPicker } from "@/components/monitors/region-picker";
 import { CountryFilterPicker } from "@/components/monitors/country-filter-picker";
 import { ColorPicker } from "@/components/monitors/color-picker";
+import { StatusPicker } from "@/components/monitors/status-picker";
 import { ArrowLeft, Plus, Send } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -27,6 +28,7 @@ export default function NewMonitorPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("de");
   const [selectedAllowedCountries, setSelectedAllowedCountries] = useState<string[]>([]);
   const [proxyGroups, setProxyGroups] = useState<ProxyGroupOption[]>([]);
@@ -221,6 +223,27 @@ export default function NewMonitorPage() {
               />
               <p className="text-[12px] text-muted-foreground">
                 Limit results to specific colors.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px]">
+                Condition Filter{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <StatusPicker
+                selected={selectedStatuses}
+                onChange={setSelectedStatuses}
+              />
+              <input
+                type="hidden"
+                name="status_ids"
+                value={selectedStatuses.join(",")}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Pick one or more item conditions. Leave empty to allow all conditions.
               </p>
             </div>
 

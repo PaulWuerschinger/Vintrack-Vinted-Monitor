@@ -44,6 +44,7 @@ import { getBrandLabels } from "@/lib/brands";
 import { getColorLabels } from "@/lib/colors";
 import { getSizeLabels } from "@/lib/sizes";
 import { getRegionLabel, getRegionFlags } from "@/lib/regions";
+import { getStatusLabels } from "@/lib/statuses";
 
 type MonitorHealth = {
   monitor_id: number;
@@ -62,6 +63,7 @@ export type Monitor = {
   catalog_ids: string | null;
   brand_ids: string | null;
   color_ids: string | null;
+  status_ids: string | null;
   size_id: string | null;
   region: string;
   allowed_countries: string | null;
@@ -359,7 +361,7 @@ export function DashboardClient({
                   </div>
                 </div>
 
-                {(m.catalog_ids || m.brand_ids || m.color_ids || m.size_id || m.allowed_countries) && (
+                {(m.catalog_ids || m.brand_ids || m.color_ids || m.status_ids || m.size_id || m.allowed_countries) && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {m.allowed_countries && (
                       <span
@@ -392,6 +394,16 @@ export function DashboardClient({
                         <span
                           key={`color-${label}`}
                           className="inline-flex items-center rounded-md border border-pink-500/20 bg-pink-500/12 px-1.5 py-0.5 text-[10px] font-medium text-pink-400"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    {m.status_ids &&
+                      getStatusLabels(m.status_ids).map((label) => (
+                        <span
+                          key={`status-${label}`}
+                          className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/12 px-1.5 py-0.5 text-[10px] font-medium text-cyan-400"
+                          title={label}
                         >
                           {label}
                         </span>

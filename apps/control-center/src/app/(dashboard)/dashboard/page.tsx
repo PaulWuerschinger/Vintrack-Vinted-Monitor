@@ -26,6 +26,7 @@ export default async function DashboardPage() {
     catalog_ids: m.catalog_ids ?? null,
     brand_ids: m.brand_ids ?? null,
     color_ids: m.color_ids ?? null,
+    status_ids: m.status_ids ?? null,
     size_id: m.size_id ?? null,
     region: m.region ?? "de",
     allowed_countries: m.allowed_countries ?? null,

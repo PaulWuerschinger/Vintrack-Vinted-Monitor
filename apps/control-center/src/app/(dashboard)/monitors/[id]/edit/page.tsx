@@ -11,10 +11,11 @@ import { SizePicker } from "@/components/monitors/size-picker";
 import { RegionPicker } from "@/components/monitors/region-picker";
 import { CountryFilterPicker } from "@/components/monitors/country-filter-picker";
 import { ColorPicker } from "@/components/monitors/color-picker";
+import { StatusPicker } from "@/components/monitors/status-picker";
 import { ArrowLeft, Save, Loader2, Send } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 type ProxyGroupOption = {
@@ -32,6 +33,7 @@ type MonitorData = {
   catalog_ids: string | null;
   brand_ids: string | null;
   color_ids: string | null;
+  status_ids: string | null;
   region: string;
   allowed_countries: string | null;
   discord_webhook: string | null;
@@ -47,6 +49,7 @@ export default function EditMonitorPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("de");
   const [selectedAllowedCountries, setSelectedAllowedCountries] = useState<string[]>([]);
   const [proxyGroups, setProxyGroups] = useState<ProxyGroupOption[]>([]);
@@ -85,6 +88,7 @@ export default function EditMonitorPage() {
           setSelectedCategories(m.catalog_ids ? m.catalog_ids.split(",").filter(Boolean) : []);
           setSelectedBrands(m.brand_ids ? m.brand_ids.split(",").filter(Boolean) : []);
           setSelectedColors(m.color_ids ? m.color_ids.split(",").filter(Boolean) : []);
+          setSelectedStatuses(m.status_ids ? m.status_ids.split(",").filter(Boolean) : []);
           setSelectedRegion(m.region || "de");
           setSelectedAllowedCountries(m.allowed_countries ? m.allowed_countries.split(",").filter(Boolean) : []);
           setSelectedProxyGroup(
@@ -278,6 +282,27 @@ export default function EditMonitorPage() {
               />
               <p className="text-[12px] text-muted-foreground">
                 Limit results to specific colors.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px]">
+                Condition Filter{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <StatusPicker
+                selected={selectedStatuses}
+                onChange={setSelectedStatuses}
+              />
+              <input
+                type="hidden"
+                name="status_ids"
+                value={selectedStatuses.join(",")}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Pick one or more item conditions. Leave empty to allow all conditions.
               </p>
             </div>
 
