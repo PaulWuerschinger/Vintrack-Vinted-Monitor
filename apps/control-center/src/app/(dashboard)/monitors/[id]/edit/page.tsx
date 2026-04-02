@@ -1,6 +1,6 @@
 "use client";
 
-import { updateMonitor, testDiscordWebhook } from "@/actions/monitor";
+import { deleteMonitor, updateMonitor, testDiscordWebhook } from "@/actions/monitor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { RegionPicker } from "@/components/monitors/region-picker";
 import { CountryFilterPicker } from "@/components/monitors/country-filter-picker";
 import { ColorPicker } from "@/components/monitors/color-picker";
 import { StatusPicker } from "@/components/monitors/status-picker";
-import { ArrowLeft, Save, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -120,6 +120,7 @@ export default function EditMonitorPage() {
   }
 
   const boundUpdate = updateMonitor.bind(null, monitorId);
+  const boundDelete = deleteMonitor.bind(null, monitorId);
 
   return (
     <div className="space-y-6 mx-auto max-w-4xl">
@@ -393,10 +394,26 @@ export default function EditMonitorPage() {
               )}
             </div>
 
-            <div className="pt-2">
-              <Button type="submit" className="w-full gap-1.5">
-                <Save className="w-4 h-4" /> Save Changes
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="submit"
+                formAction={boundDelete}
+                variant="outline"
+                className="w-full gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+              >
+                <Trash2 className="w-4 h-4" /> Delete Monitor
               </Button>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link href={`/monitors/${monitorId}`}>
+                  <Button type="button" variant="outline" className="w-full sm:w-auto">
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="submit" className="w-full gap-1.5 sm:w-auto">
+                  <Save className="w-4 h-4" /> Save Changes
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>

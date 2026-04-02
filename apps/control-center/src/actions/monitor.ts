@@ -114,7 +114,7 @@ export async function createMonitor(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect(`/monitors/${monitor.id}`);
 }
 
 export async function updateMonitor(id: number, formData: FormData) {
@@ -250,6 +250,8 @@ export async function deleteMonitor(id: number) {
     } 
   });
   revalidatePath("/dashboard");
+  revalidatePath(`/monitors/${id}`);
+  revalidatePath(`/monitors/${id}/edit`);
   redirect("/dashboard");
 }
 
