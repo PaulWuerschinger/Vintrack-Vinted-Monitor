@@ -14,6 +14,7 @@ func TestMonitorConfigFingerprintIncludesRuntimeFilters(t *testing.T) {
 	catalogIDs := "10,20"
 	brandIDs := "30,40"
 	colorIDs := "50,60"
+	statusIDs := "1,4"
 	allowedCountries := "de,fr"
 
 	base := model.Monitor{
@@ -25,6 +26,7 @@ func TestMonitorConfigFingerprintIncludesRuntimeFilters(t *testing.T) {
 		CatalogIDs:       &catalogIDs,
 		BrandIDs:         &brandIDs,
 		ColorIDs:         &colorIDs,
+		StatusIDs:        &statusIDs,
 		Region:           "de",
 		AllowedCountries: &allowedCountries,
 		Proxies:          sql.NullString{Valid: true, String: "http://proxy-a:8080"},
@@ -44,6 +46,7 @@ func TestMonitorConfigFingerprintIncludesRuntimeFilters(t *testing.T) {
 		{name: "catalog", mutate: func(m *model.Monitor) { v := "11,21"; m.CatalogIDs = &v }},
 		{name: "brand", mutate: func(m *model.Monitor) { v := "31,41"; m.BrandIDs = &v }},
 		{name: "color", mutate: func(m *model.Monitor) { v := "51,61"; m.ColorIDs = &v }},
+		{name: "status", mutate: func(m *model.Monitor) { v := "2,5"; m.StatusIDs = &v }},
 		{name: "region", mutate: func(m *model.Monitor) { m.Region = "fr" }},
 		{name: "allowed countries", mutate: func(m *model.Monitor) { v := "it"; m.AllowedCountries = &v }},
 		{name: "proxies", mutate: func(m *model.Monitor) { m.Proxies = sql.NullString{Valid: true, String: "http://proxy-b:8080"} }},
