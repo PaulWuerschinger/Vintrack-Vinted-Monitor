@@ -1,6 +1,6 @@
 "use client";
 
-import { updateMonitor, testDiscordWebhook } from "@/actions/monitor";
+import { deleteMonitorAndReturn, updateMonitorAndReturn, testDiscordWebhook } from "@/actions/monitor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import { SizePicker } from "@/components/monitors/size-picker";
 import { RegionPicker } from "@/components/monitors/region-picker";
 import { CountryFilterPicker } from "@/components/monitors/country-filter-picker";
 import { ColorPicker } from "@/components/monitors/color-picker";
-import { ArrowLeft, Save, Loader2, Send } from "lucide-react";
+import { StatusPicker } from "@/components/monitors/status-picker";
+import { ArrowLeft, Loader2, Save, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 type ProxyGroupOption = {
@@ -32,6 +33,7 @@ type MonitorData = {
   catalog_ids: string | null;
   brand_ids: string | null;
   color_ids: string | null;
+  status_ids: string | null;
   region: string;
   allowed_countries: string | null;
   discord_webhook: string | null;
@@ -40,13 +42,17 @@ type MonitorData = {
 
 export default function EditMonitorPage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const monitorId = Number(params.id);
+  const returnTo = searchParams.get("from") === "dashboard" ? "dashboard" : "detail";
 
   const [monitor, setMonitor] = useState<MonitorData | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("de");
   const [selectedAllowedCountries, setSelectedAllowedCountries] = useState<string[]>([]);
   const [proxyGroups, setProxyGroups] = useState<ProxyGroupOption[]>([]);
@@ -85,6 +91,7 @@ export default function EditMonitorPage() {
           setSelectedCategories(m.catalog_ids ? m.catalog_ids.split(",").filter(Boolean) : []);
           setSelectedBrands(m.brand_ids ? m.brand_ids.split(",").filter(Boolean) : []);
           setSelectedColors(m.color_ids ? m.color_ids.split(",").filter(Boolean) : []);
+          setSelectedStatuses(m.status_ids ? m.status_ids.split(",").filter(Boolean) : []);
           setSelectedRegion(m.region || "de");
           setSelectedAllowedCountries(m.allowed_countries ? m.allowed_countries.split(",").filter(Boolean) : []);
           setSelectedProxyGroup(
@@ -115,7 +122,30 @@ export default function EditMonitorPage() {
     );
   }
 
-  const boundUpdate = updateMonitor.bind(null, monitorId);
+  const handleDelete = async () => {
+    await toast.promise(deleteMonitorAndReturn(monitorId), {
+      loading: "Deleting monitor...",
+      success: "Monitor deleted",
+      error: "Failed to delete monitor",
+    });
+
+    router.push("/dashboard");
+    router.refresh();
+  };
+
+  const handleSave = async (formData: FormData) => {
+    const savePromise = updateMonitorAndReturn(monitorId, formData);
+
+    await toast.promise(savePromise, {
+      loading: "Saving changes...",
+      success: "Saved successfully",
+      error: "Failed to save changes",
+    });
+
+    const result = await savePromise;
+    router.push(result.redirectTo);
+    router.refresh();
+  };
 
   return (
     <div className="space-y-6 mx-auto max-w-4xl">
@@ -135,7 +165,8 @@ export default function EditMonitorPage() {
 
       <Card className="border-input/60">
         <CardContent className="p-6">
-          <form action={boundUpdate} className="space-y-6">
+          <form action={handleSave} className="space-y-6">
+            <input type="hidden" name="return_to" value={returnTo} />
             <div className="space-y-2">
               <Label htmlFor="query" className="text-[13px]">
                 Search Query
@@ -281,6 +312,27 @@ export default function EditMonitorPage() {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-[13px]">
+                Condition Filter{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <StatusPicker
+                selected={selectedStatuses}
+                onChange={setSelectedStatuses}
+              />
+              <input
+                type="hidden"
+                name="status_ids"
+                value={selectedStatuses.join(",")}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Pick one or more item conditions. Leave empty to allow all conditions.
+              </p>
+            </div>
+
             <div className="space-y-2.5">
               <Label className="text-[13px]">
                 Size Filter{" "}
@@ -368,10 +420,26 @@ export default function EditMonitorPage() {
               )}
             </div>
 
-            <div className="pt-2">
-              <Button type="submit" className="w-full gap-1.5">
-                <Save className="w-4 h-4" /> Save Changes
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                onClick={handleDelete}
+                variant="outline"
+                className="w-full gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+              >
+                <Trash2 className="w-4 h-4" /> Delete Monitor
               </Button>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link href={returnTo === "dashboard" ? "/dashboard" : `/monitors/${monitorId}`}>
+                  <Button type="button" variant="outline" className="w-full sm:w-auto">
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="submit" className="w-full gap-1.5 sm:w-auto">
+                  <Save className="w-4 h-4" /> Save Changes
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>

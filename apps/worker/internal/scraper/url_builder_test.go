@@ -120,6 +120,23 @@ func TestBuildVintedURL_WithColorIDs(t *testing.T) {
 	}
 }
 
+func TestBuildVintedURL_WithStatusIDs(t *testing.T) {
+	statusIDs := "1, 4,6"
+	m := model.Monitor{
+		Query:     "test",
+		Region:    "de",
+		StatusIDs: &statusIDs,
+	}
+
+	result := BuildVintedURL(m)
+	parsed, _ := url.Parse(result)
+
+	statuses := parsed.Query()["status_ids[]"]
+	if len(statuses) != 3 {
+		t.Errorf("Expected 3 status_ids, got %d", len(statuses))
+	}
+}
+
 func TestBuildVintedURL_NilFilters(t *testing.T) {
 	m := model.Monitor{
 		Query:  "shoes",

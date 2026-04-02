@@ -11,6 +11,7 @@ import { getBrandLabels } from "@/lib/brands";
 import { getColorLabels } from "@/lib/colors";
 import { getSizeLabels } from "@/lib/sizes";
 import { getRegionLabel, getRegionFlags } from "@/lib/regions";
+import { getStatusLabels } from "@/lib/statuses";
 import { ProxyHealthCard } from "@/components/monitors/proxy-health";
 import { MonitorLiveProvider } from "@/components/monitors/monitor-live-context";
 import { MonitorItemCount } from "@/components/monitors/monitor-item-count";
@@ -106,7 +107,7 @@ export default async function MonitorPage({
               )}
             </div>
 
-            {(monitor.catalog_ids || monitor.brand_ids || monitor.color_ids || monitor.size_id || monitor.allowed_countries) && (
+            {(monitor.catalog_ids || monitor.brand_ids || monitor.color_ids || monitor.status_ids || monitor.size_id || monitor.allowed_countries) && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {monitor.allowed_countries && (
                   <span
@@ -139,6 +140,16 @@ export default async function MonitorPage({
                     <span
                       key={`color-${label}`}
                       className="inline-flex items-center rounded-md bg-pink-50 dark:bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-500/20"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                {monitor.status_ids &&
+                  getStatusLabels(monitor.status_ids).map((label) => (
+                    <span
+                      key={`status-${label}`}
+                      className="inline-flex items-center rounded-md bg-cyan-50 dark:bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20"
+                      title={label}
                     >
                       {label}
                     </span>
