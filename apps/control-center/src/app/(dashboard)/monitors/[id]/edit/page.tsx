@@ -221,6 +221,7 @@ export default function EditMonitorPage() {
                 </span>
               </Label>
               <CategoryPicker
+                region={selectedRegion}
                 selected={selectedCategories}
                 onChange={setSelectedCategories}
               />

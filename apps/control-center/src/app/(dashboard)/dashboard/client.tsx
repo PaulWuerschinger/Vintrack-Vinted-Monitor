@@ -39,7 +39,6 @@ import {
   toggleWebhookStatus,
 } from "@/actions/dashboard-actions";
 import { testDiscordWebhook } from "@/actions/monitor";
-import { getCategoryLabels } from "@/lib/categories";
 import { getBrandLabels } from "@/lib/brands";
 import { getColorLabels } from "@/lib/colors";
 import { getSizeLabels } from "@/lib/sizes";
@@ -61,6 +60,7 @@ export type Monitor = {
   status: string;
   price_max: number | null;
   catalog_ids: string | null;
+  category_labels: string[];
   brand_ids: string | null;
   color_ids: string | null;
   status_ids: string | null;
@@ -371,8 +371,7 @@ export function DashboardClient({
                         {getRegionFlags(m.allowed_countries).join(" ")}
                       </span>
                     )}
-                    {m.catalog_ids &&
-                      getCategoryLabels(m.catalog_ids).map((label) => (
+                    {m.category_labels.map((label) => (
                         <span
                           key={`cat-${label}`}
                           className="inline-flex items-center rounded-md border border-violet-500/20 bg-violet-500/12 px-1.5 py-0.5 text-[10px] font-medium text-violet-400"

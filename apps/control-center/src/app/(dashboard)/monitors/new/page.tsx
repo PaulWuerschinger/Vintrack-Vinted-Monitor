@@ -137,6 +137,7 @@ export default function NewMonitorPage() {
                 </span>
               </Label>
               <CategoryPicker
+                region={selectedRegion}
                 selected={selectedCategories}
                 onChange={setSelectedCategories}
               />

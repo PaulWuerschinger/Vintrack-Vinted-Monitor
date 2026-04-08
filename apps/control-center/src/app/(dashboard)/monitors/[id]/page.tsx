@@ -6,7 +6,7 @@ import { toggleMonitorStatus, deleteMonitor } from "@/actions/monitor";
 import { ArrowLeft, PauseCircle, PlayCircle, Trash2, Tag, Globe, Zap, Pencil } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { getCategoryLabels } from "@/lib/categories";
+import { getCategoryLabelsForRegion } from "@/lib/categories.server";
 import { getBrandLabels } from "@/lib/brands";
 import { getColorLabels } from "@/lib/colors";
 import { getSizeLabels } from "@/lib/sizes";
@@ -42,6 +42,10 @@ export default async function MonitorPage({
     monitor.status || "active"
   );
   const deleteAction = deleteMonitor.bind(null, monitor.id);
+  const categoryLabels = await getCategoryLabelsForRegion(
+    monitor.catalog_ids,
+    monitor.region
+  );
 
   return (
     <MonitorLiveProvider initialItemCount={monitor._count.items}>
@@ -117,8 +121,7 @@ export default async function MonitorPage({
                     {getRegionFlags(monitor.allowed_countries).join(" ")}
                   </span>
                 )}
-                {monitor.catalog_ids &&
-                  getCategoryLabels(monitor.catalog_ids).map((label) => (
+                {categoryLabels.map((label) => (
                     <span
                       key={`cat-${label}`}
                       className="inline-flex items-center rounded-md bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-500/20"
