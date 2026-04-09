@@ -58,7 +58,7 @@ export function BrandPicker({ selected, onChange }: BrandPickerProps) {
           {selectedBrands.map((brand) => (
             <span
               key={brand.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground border-primary text-[12px] font-medium border border-blue-200"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground border-primary text-[12px] font-medium border"
             >
               {brand.label}
               <button
