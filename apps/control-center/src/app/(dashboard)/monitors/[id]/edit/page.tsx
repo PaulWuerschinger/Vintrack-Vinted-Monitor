@@ -16,7 +16,7 @@ import { getStatusLocaleForRegionCodes } from "@/lib/regions";
 import { buildVintedMonitorUrl } from "@/lib/vinted-url";
 import { ArrowLeft, Copy, ExternalLink, Loader2, Save, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -93,6 +93,22 @@ export default function EditMonitorPage() {
       toast.error("Failed to copy preview URL");
     }
   };
+
+  const handleCategorySelectionMetaChange = useCallback(
+    ({ selectedLabels }: { selectedLabels: string[] }) => {
+      setSelectedCategoryLabels((current) => {
+        if (
+          current.length === selectedLabels.length &&
+          current.every((value, index) => value === selectedLabels[index])
+        ) {
+          return current;
+        }
+
+        return selectedLabels;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     Promise.all([
@@ -287,9 +303,7 @@ export default function EditMonitorPage() {
                 region={selectedRegion}
                 selected={selectedCategories}
                 onChange={setSelectedCategories}
-                onSelectionMetaChange={({ selectedLabels }) =>
-                  setSelectedCategoryLabels(selectedLabels)
-                }
+                onSelectionMetaChange={handleCategorySelectionMetaChange}
               />
               <input
                 type="hidden"
