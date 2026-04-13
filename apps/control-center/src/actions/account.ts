@@ -1,8 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-
-const API_URL = process.env.VINTED_SERVICE_URL || "http://localhost:4000";
+import { createVintedServiceHeaders, VINTED_SERVICE_URL } from "@/lib/vinted-service";
 
 async function apiFetch(path: string, options: RequestInit = {}) {
   const session = await auth();
@@ -12,11 +11,10 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${VINTED_SERVICE_URL}${path}`, {
       ...options,
       headers: {
-        "Content-Type": "application/json",
-        "X-User-ID": session.user.id,
+        ...createVintedServiceHeaders(session.user.id),
         ...options.headers,
       },
       cache: "no-store",

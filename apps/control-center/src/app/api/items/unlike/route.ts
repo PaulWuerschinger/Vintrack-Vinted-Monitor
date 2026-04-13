@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-
-const API_URL = process.env.VINTED_SERVICE_URL || "http://localhost:4000";
+import { createVintedServiceHeaders, VINTED_SERVICE_URL } from "@/lib/vinted-service";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -11,12 +10,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.text();
-    const res = await fetch(`${API_URL}/api/items/unlike`, {
+    const res = await fetch(`${VINTED_SERVICE_URL}/api/items/unlike`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-ID": session.user.id,
-      },
+      headers: createVintedServiceHeaders(session.user.id),
       body,
     });
     const data = await res.json();

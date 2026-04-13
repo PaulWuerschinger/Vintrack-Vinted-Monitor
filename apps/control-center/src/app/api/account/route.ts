@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-
-const API_URL = process.env.VINTED_SERVICE_URL || "http://localhost:4000";
+import { createVintedServiceHeaders, VINTED_SERVICE_URL } from "@/lib/vinted-service";
 
 async function proxyRequest(req: NextRequest, subPath: string) {
   const session = await auth();
@@ -9,12 +8,8 @@ async function proxyRequest(req: NextRequest, subPath: string) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = `${API_URL}/api/account/${subPath}`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-User-ID": session.user.id,
-  };
+  const url = `${VINTED_SERVICE_URL}/api/account/${subPath}`;
+  const headers = createVintedServiceHeaders(session.user.id);
 
   const options: RequestInit = {
     method: req.method,

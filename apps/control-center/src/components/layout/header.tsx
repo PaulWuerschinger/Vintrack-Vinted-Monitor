@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronRight, ExternalLink, Github, Loader2, Menu, Star } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Bell, ChevronRight, ExternalLink, Loader2, Menu } from "lucide-react";
 import { useVintedAccount } from "@/components/account-provider";
 import { cn } from "@/lib/utils";
 
@@ -271,17 +270,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       <div className="flex items-center gap-3 md:gap-4">
         <NotificationBell />
-        <ThemeToggle compact className="hidden sm:inline-flex" />
-        <a
-          href="https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden items-center gap-1.5 rounded-md border border-border/80 bg-card/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400 sm:flex"
-        >
-          <Github className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Star us on GitHub</span>
-          <Star className="w-3.5 h-3.5" />
-        </a>
+
 
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="relative flex h-2 w-2">

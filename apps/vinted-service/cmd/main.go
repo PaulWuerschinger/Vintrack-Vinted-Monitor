@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"vintrack-vinted/internal/api"
+	"vintrack-vinted/internal/proxy"
 	"vintrack-vinted/internal/session"
 	"vintrack-vinted/internal/vinted"
 
@@ -60,7 +61,10 @@ func main() {
 		return false
 	})
 
-	server := api.NewServer(sessionMgr, listenAddr)
+	proxyFile := getEnv("PROXY_FILE", "/app/proxies.txt")
+	proxyMgr := proxy.Load(proxyFile)
+
+	server := api.NewServer(sessionMgr, proxyMgr, listenAddr)
 
 	go func() {
 		if err := server.Start(); err != nil {

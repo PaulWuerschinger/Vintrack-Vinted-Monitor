@@ -20,5 +20,6 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /build/worker .
+COPY proxies.txt /app/proxies.txt
 
 CMD ["./worker"]

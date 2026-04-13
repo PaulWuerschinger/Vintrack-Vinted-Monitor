@@ -12,6 +12,7 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /build/vinted-service .
+COPY proxies.txt /app/proxies.txt
 
 EXPOSE 4000
 CMD ["./vinted-service"]

@@ -1,12 +1,15 @@
 package vinted
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,12 +32,21 @@ type Client struct {
 }
 
 func NewClient(sess *session.VintedSession) (*Client, error) {
+	return NewClientWithProxy(sess, "")
+}
+
+func NewClientWithProxy(sess *session.VintedSession, proxyURL string) (*Client, error) {
 	jar := tls_client.NewCookieJar()
 
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(15),
 		tls_client.WithClientProfile(profiles.Chrome_131),
 		tls_client.WithCookieJar(jar),
+		tls_client.WithNotFollowRedirects(),
+	}
+
+	if proxyURL != "" {
+		options = append(options, tls_client.WithProxyUrl(proxyURL))
 	}
 
 	httpClient, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(), options...)
@@ -150,9 +162,30 @@ func (c *Client) WarmUp() error {
 		"User-Agent": {"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"},
 		"Accept":     {"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"},
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("warmup: %w", err)
+	// Follow redirects manually (client has WithNotFollowRedirects)
+	var resp *http.Response
+	var err error
+	currentURL := u
+	for i := 0; i < 5; i++ {
+		req, _ = http.NewRequest("GET", currentURL, nil)
+		req.Header = http.Header{
+			"User-Agent": {"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"},
+			"Accept":     {"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"},
+		}
+		resp, err = c.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("warmup: %w", err)
+		}
+		if resp.StatusCode == 301 || resp.StatusCode == 302 {
+			loc := resp.Header.Get("Location")
+			resp.Body.Close()
+			if loc == "" {
+				break
+			}
+			currentURL = loc
+			continue
+		}
+		break
 	}
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -501,7 +534,7 @@ func (c *Client) GetAccountInfo() (*AccountInfo, error) {
 					}
 				}
 
-				if resp.StatusCode == 401 || resp.StatusCode == 403 {
+				if resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode == 302 {
 					return nil, fmt.Errorf("authentication failed (HTTP %d)", resp.StatusCode)
 				}
 			}
@@ -524,7 +557,7 @@ func (c *Client) GetAccountInfo() (*AccountInfo, error) {
 	body, _ := io.ReadAll(resp.Body)
 	log.Printf("[vinted] GET /api/v2/users/current -> %d (%.300s)", resp.StatusCode, string(body))
 
-	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+	if resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode == 302 {
 		return nil, fmt.Errorf("authentication failed (HTTP %d)", resp.StatusCode)
 	}
 
@@ -564,8 +597,8 @@ func (c *Client) ValidateSession() bool {
 
 func (c *Client) LikeItem(itemID int64) error {
 	err := c.doLike(itemID)
-	if err != nil && strings.Contains(err.Error(), "HTTP 401") && c.session.RefreshToken != "" {
-		log.Printf("[vinted] like got 401, attempting token refresh...")
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] like got auth error, attempting token refresh...")
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
 			return err
@@ -621,8 +654,8 @@ func minInt(a, b int) int {
 
 func (c *Client) UnlikeItem(itemID int64) error {
 	err := c.doUnlike(itemID)
-	if err != nil && strings.Contains(err.Error(), "HTTP 401") && c.session.RefreshToken != "" {
-		log.Printf("[vinted] unlike got 401, attempting token refresh...")
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] unlike got auth error, attempting token refresh...")
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
 			return err
@@ -822,7 +855,7 @@ func (c *Client) RefreshAccessToken() error {
 
 func (c *Client) GetFavourites(vintedUserID int64, page string) (*FavoritesResponse, error) {
 	favs, err := c.doGetFavourites(vintedUserID, page)
-	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403")) && c.session.RefreshToken != "" {
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
 		log.Printf("[vinted] get favorites got %v, attempting token refresh...", err)
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
@@ -835,7 +868,7 @@ func (c *Client) GetFavourites(vintedUserID int64, page string) (*FavoritesRespo
 
 func (c *Client) GetWardrobe(vintedUserID int64, page, perPage int, order string) (*WardrobeResponse, error) {
 	wardrobe, err := c.doGetWardrobe(vintedUserID, page, perPage, order)
-	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403")) && c.session.RefreshToken != "" {
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
 		log.Printf("[vinted] get wardrobe got %v, attempting token refresh...", err)
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
@@ -1116,8 +1149,8 @@ func (c *Client) EnrichFavorites(favs *FavoritesResponse) {
 
 func (c *Client) SendMessage(itemID, sellerID int64, message string) error {
 	err := c.doSendMessage(itemID, sellerID, message)
-	if err != nil && strings.Contains(err.Error(), "HTTP 401") && c.session.RefreshToken != "" {
-		log.Printf("[vinted] send message got 401, attempting token refresh...")
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] send message got auth error, attempting token refresh...")
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
 			return err
@@ -1129,7 +1162,7 @@ func (c *Client) SendMessage(itemID, sellerID int64, message string) error {
 
 func (c *Client) GetInbox(page, perPage int) (*InboxResponse, error) {
 	inbox, err := c.doGetInbox(page, perPage)
-	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403")) && c.session.RefreshToken != "" {
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
 		log.Printf("[vinted] get inbox got %v, attempting token refresh...", err)
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
@@ -1142,7 +1175,7 @@ func (c *Client) GetInbox(page, perPage int) (*InboxResponse, error) {
 
 func (c *Client) GetNotifications(page, perPage int) (*NotificationsResponse, error) {
 	notifications, err := c.doGetNotifications(page, perPage)
-	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403")) && c.session.RefreshToken != "" {
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
 		log.Printf("[vinted] get notifications got %v, attempting token refresh...", err)
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
@@ -1307,7 +1340,7 @@ func domainForPortal(portal string) string {
 
 func (c *Client) GetConversationReplies(conversationID int64, page, perPage int) (map[string]interface{}, error) {
 	data, err := c.doGetConversationReplies(conversationID, page, perPage)
-	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403")) && c.session.RefreshToken != "" {
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
 		log.Printf("[vinted] get conversation replies got %v, attempting token refresh...", err)
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
@@ -1357,8 +1390,8 @@ func (c *Client) getConversationDetail(conversationID int64) (map[string]interfa
 
 func (c *Client) ReplyToConversation(conversationID int64, message string) error {
 	err := c.doReplyToConversation(conversationID, message)
-	if err != nil && strings.Contains(err.Error(), "HTTP 401") && c.session.RefreshToken != "" {
-		log.Printf("[vinted] reply to conversation got 401, attempting token refresh...")
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] reply to conversation got auth error, attempting token refresh...")
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
 			return err
@@ -1400,6 +1433,30 @@ func (c *Client) doReplyToConversation(conversationID int64, message string) err
 	bodyStr := strings.TrimSpace(string(respBody))
 
 	log.Printf("[vinted] POST /api/v2/conversations/%d/replies -> %d (%.300s)", conversationID, resp.StatusCode, bodyStr)
+
+	// Handle cross-market redirect (302/301) — retry POST on the redirected domain
+	if resp.StatusCode == 301 || resp.StatusCode == 302 {
+		location := resp.Header.Get("Location")
+		if location != "" {
+			log.Printf("[vinted] following redirect to %s", location)
+			req2, err2 := http.NewRequest("POST", location, strings.NewReader(string(replyBody)))
+			if err2 != nil {
+				return fmt.Errorf("create redirect reply request: %w", err2)
+			}
+			req2.Header = c.apiHeadersWithBody()
+			resp2, err2 := c.httpClient.Do(req2)
+			if err2 != nil {
+				return fmt.Errorf("redirect reply request failed: %w", err2)
+			}
+			defer resp2.Body.Close()
+			body2, _ := io.ReadAll(resp2.Body)
+			log.Printf("[vinted] POST redirect -> %d (%.300s)", resp2.StatusCode, strings.TrimSpace(string(body2)))
+			if resp2.StatusCode >= 200 && resp2.StatusCode < 300 {
+				return nil
+			}
+			return fmt.Errorf("send reply failed after redirect (HTTP %d): %s", resp2.StatusCode, truncate(strings.TrimSpace(string(body2)), 300))
+		}
+	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
@@ -1502,8 +1559,8 @@ func (c *Client) doSendMessage(itemID, sellerID int64, message string) error {
 
 func (c *Client) SendOffer(itemID, sellerID int64, price string, currency string) error {
 	err := c.doSendOffer(itemID, sellerID, price, currency)
-	if err != nil && strings.Contains(err.Error(), "HTTP 401") && c.session.RefreshToken != "" {
-		log.Printf("[vinted] send offer got 401, attempting token refresh...")
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] send offer got auth error, attempting token refresh...")
 		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
 			log.Printf("[vinted] token refresh failed: %v", refreshErr)
 			return err
@@ -1606,4 +1663,427 @@ func (c *Client) doSendOffer(itemID, sellerID int64, price string, currency stri
 	}
 
 	return fmt.Errorf("send offer failed (HTTP %d): %s", resp2.StatusCode, truncate(bodyStr2, 300))
+}
+
+// ── Listing Management Methods ──────────────────────────────────────────
+
+func (c *Client) UploadPhoto(fileData []byte, filename string) (int64, error) {
+	err := c.doUploadPhoto(fileData, filename)
+	if id, ok := err.(photoUploadResult); ok {
+		return int64(id), nil
+	}
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] photo upload got auth error, attempting token refresh...")
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return 0, err
+		}
+		err = c.doUploadPhoto(fileData, filename)
+		if id, ok := err.(photoUploadResult); ok {
+			return int64(id), nil
+		}
+	}
+	return 0, err
+}
+
+type photoUploadResult int64
+
+func (p photoUploadResult) Error() string {
+	return fmt.Sprintf("photo uploaded: %d", int64(p))
+}
+
+func (c *Client) doUploadPhoto(fileData []byte, filename string) error {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before photo upload: %v", err)
+	}
+
+	uploadURL := fmt.Sprintf("https://%s/api/v2/photos", c.session.Domain)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	contentType := "image/jpeg"
+	switch ext {
+	case ".png":
+		contentType = "image/png"
+	case ".webp":
+		contentType = "image/webp"
+	case ".gif":
+		contentType = "image/gif"
+	}
+
+	part, err := writer.CreatePart(map[string][]string{
+		"Content-Disposition": {fmt.Sprintf(`form-data; name="photo[file]"; filename="%s"`, filename)},
+		"Content-Type":        {contentType},
+	})
+	if err != nil {
+		return fmt.Errorf("create form part: %w", err)
+	}
+	if _, err := part.Write(fileData); err != nil {
+		return fmt.Errorf("write file data: %w", err)
+	}
+
+	if err := writer.WriteField("photo[type]", "item"); err != nil {
+		return fmt.Errorf("write type field: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("close multipart writer: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", uploadURL, &body)
+	if err != nil {
+		return fmt.Errorf("create upload request: %w", err)
+	}
+	req.Header = c.apiHeaders()
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("upload request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := strings.TrimSpace(string(respBody))
+
+	log.Printf("[vinted] POST /api/v2/photos -> %d (%.300s)", resp.StatusCode, bodyStr)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("photo upload failed (HTTP %d): %s", resp.StatusCode, truncate(bodyStr, 300))
+	}
+
+	var photoResp struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(respBody, &photoResp); err != nil {
+		return fmt.Errorf("parse photo response: %w", err)
+	}
+
+	if photoResp.ID == 0 {
+		return fmt.Errorf("photo upload returned no ID: %s", truncate(bodyStr, 200))
+	}
+
+	log.Printf("[vinted] uploaded photo %d (%s)", photoResp.ID, filename)
+	return photoUploadResult(photoResp.ID)
+}
+
+func (c *Client) CreateItem(payload map[string]interface{}) (int64, string, error) {
+	id, url, err := c.doCreateItem(payload)
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] create item got auth error, attempting token refresh...")
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return 0, "", err
+		}
+		return c.doCreateItem(payload)
+	}
+	return id, url, err
+}
+
+func (c *Client) doCreateItem(payload map[string]interface{}) (int64, string, error) {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before create item: %v", err)
+	}
+
+	createURL := fmt.Sprintf("https://%s/api/v2/items", c.session.Domain)
+	body, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", createURL, strings.NewReader(string(body)))
+	if err != nil {
+		return 0, "", fmt.Errorf("create item request: %w", err)
+	}
+	req.Header = c.apiHeadersWithBody()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, "", fmt.Errorf("create item request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := strings.TrimSpace(string(respBody))
+
+	log.Printf("[vinted] POST /api/v2/items -> %d (%.300s)", resp.StatusCode, bodyStr)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return 0, "", fmt.Errorf("create item failed (HTTP %d): %s", resp.StatusCode, truncate(bodyStr, 300))
+	}
+
+	var itemResp struct {
+		Item struct {
+			ID  int64  `json:"id"`
+			URL string `json:"url"`
+		} `json:"item"`
+	}
+	if err := json.Unmarshal(respBody, &itemResp); err != nil {
+		return 0, "", fmt.Errorf("parse create item response: %w", err)
+	}
+
+	itemURL := itemResp.Item.URL
+	if itemURL == "" && itemResp.Item.ID > 0 {
+		itemURL = fmt.Sprintf("https://%s/items/%d", c.session.Domain, itemResp.Item.ID)
+	}
+
+	log.Printf("[vinted] created item %d -> %s", itemResp.Item.ID, itemURL)
+	return itemResp.Item.ID, itemURL, nil
+}
+
+func (c *Client) UpdateItem(itemID int64, payload map[string]interface{}) error {
+	err := c.doUpdateItem(itemID, payload)
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] update item got auth error, attempting token refresh...")
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return err
+		}
+		return c.doUpdateItem(itemID, payload)
+	}
+	return err
+}
+
+func (c *Client) doUpdateItem(itemID int64, payload map[string]interface{}) error {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before update item: %v", err)
+	}
+
+	updateURL := fmt.Sprintf("https://%s/api/v2/items/%d", c.session.Domain, itemID)
+	body, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("PATCH", updateURL, strings.NewReader(string(body)))
+	if err != nil {
+		return fmt.Errorf("create update request: %w", err)
+	}
+	req.Header = c.apiHeadersWithBody()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("update item request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := strings.TrimSpace(string(respBody))
+
+	log.Printf("[vinted] PATCH /api/v2/items/%d -> %d (%.300s)", itemID, resp.StatusCode, bodyStr)
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("[vinted] updated item %d", itemID)
+		return nil
+	}
+
+	return fmt.Errorf("update item failed (HTTP %d): %s", resp.StatusCode, truncate(bodyStr, 300))
+}
+
+func (c *Client) DeleteItem(itemID int64) error {
+	err := c.doDeleteItem(itemID)
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] delete item got auth error, attempting token refresh...")
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return err
+		}
+		return c.doDeleteItem(itemID)
+	}
+	return err
+}
+
+func (c *Client) doDeleteItem(itemID int64) error {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before delete item: %v", err)
+	}
+
+	deleteURL := fmt.Sprintf("https://%s/api/v2/items/%d", c.session.Domain, itemID)
+
+	req, err := http.NewRequest("DELETE", deleteURL, nil)
+	if err != nil {
+		return fmt.Errorf("create delete request: %w", err)
+	}
+	req.Header = c.apiHeaders()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("delete item request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := strings.TrimSpace(string(respBody))
+
+	log.Printf("[vinted] DELETE /api/v2/items/%d -> %d (%.300s)", itemID, resp.StatusCode, bodyStr)
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("[vinted] deleted item %d", itemID)
+		return nil
+	}
+
+	return fmt.Errorf("delete item failed (HTTP %d): %s", resp.StatusCode, truncate(bodyStr, 300))
+}
+
+func (c *Client) HideItem(itemID int64) error {
+	return c.setItemVisibility(itemID, true)
+}
+
+func (c *Client) UnhideItem(itemID int64) error {
+	return c.setItemVisibility(itemID, false)
+}
+
+func (c *Client) setItemVisibility(itemID int64, hidden bool) error {
+	err := c.doSetItemVisibility(itemID, hidden)
+	if err != nil && (strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 302")) && c.session.RefreshToken != "" {
+		action := "hide"
+		if !hidden {
+			action = "unhide"
+		}
+		log.Printf("[vinted] %s item got auth error, attempting token refresh...", action)
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return err
+		}
+		return c.doSetItemVisibility(itemID, hidden)
+	}
+	return err
+}
+
+func (c *Client) doSetItemVisibility(itemID int64, hidden bool) error {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before visibility change: %v", err)
+	}
+
+	action := "hide"
+	if !hidden {
+		action = "unhide"
+	}
+
+	updateURL := fmt.Sprintf("https://%s/api/v2/items/%d", c.session.Domain, itemID)
+	body, _ := json.Marshal(map[string]interface{}{
+		"is_hidden": hidden,
+	})
+
+	req, err := http.NewRequest("PATCH", updateURL, strings.NewReader(string(body)))
+	if err != nil {
+		return fmt.Errorf("create %s request: %w", action, err)
+	}
+	req.Header = c.apiHeadersWithBody()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("%s item request failed: %w", action, err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	bodyStr := strings.TrimSpace(string(respBody))
+
+	log.Printf("[vinted] PATCH /api/v2/items/%d (is_hidden=%v) -> %d (%.300s)", itemID, hidden, resp.StatusCode, bodyStr)
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("[vinted] %s item %d succeeded", action, itemID)
+		return nil
+	}
+
+	return fmt.Errorf("%s item failed (HTTP %d): %s", action, resp.StatusCode, truncate(bodyStr, 300))
+}
+
+func (c *Client) GetItemRaw(itemID int64) (map[string]interface{}, error) {
+	u := fmt.Sprintf("https://%s/api/v2/items/%d?localization=%s", c.session.Domain, itemID, c.locale())
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = c.apiHeaders()
+	req.Header.Set("Referer", fmt.Sprintf("https://%s/items/%d", c.session.Domain, itemID))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("item detail error: %d (%.100s)", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal item raw: %w", err)
+	}
+
+	return result, nil
+}
+
+// ── Catalog Search ──────────────────────────────────────────────────────
+
+func (c *Client) SearchCatalog(catalogID int, region string, page, perPage int, order string) (map[string]interface{}, error) {
+	data, err := c.doSearchCatalog(catalogID, region, page, perPage, order)
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] catalog search got %v, attempting token refresh...", err)
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return nil, err
+		}
+		return c.doSearchCatalog(catalogID, region, page, perPage, order)
+	}
+	return data, err
+}
+
+func (c *Client) doSearchCatalog(catalogID int, region string, page, perPage int, order string) (map[string]interface{}, error) {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before catalog search: %v", err)
+	}
+
+	if page <= 0 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 20
+	}
+	if order == "" {
+		order = "newest_first"
+	}
+
+	domain := c.session.Domain
+	if region != "" {
+		domain = domainForPortal(region)
+	}
+
+	u := fmt.Sprintf(
+		"https://%s/api/v2/catalog/items?catalog_ids=%d&per_page=%d&page=%d&order=%s",
+		domain,
+		catalogID,
+		perPage,
+		page,
+		url.QueryEscape(order),
+	)
+
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create catalog search request: %w", err)
+	}
+
+	req.Header = c.apiHeaders()
+	req.Header.Set("Referer", fmt.Sprintf("https://%s/", domain))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("catalog search request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("[vinted] GET /api/v2/catalog/items?catalog_ids=%d&page=%d&per_page=%d&order=%s -> %d (%.300s)", catalogID, page, perPage, order, resp.StatusCode, string(body))
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(body), 300))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal catalog search: %w", err)
+	}
+
+	return result, nil
 }
