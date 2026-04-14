@@ -2030,6 +2030,116 @@ func (c *Client) SearchCatalog(catalogID int, region string, page, perPage int, 
 	return data, err
 }
 
+func (c *Client) GetMyOrders(page, perPage int) (map[string]interface{}, error) {
+	data, err := c.doGetMyOrders(page, perPage)
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] GetMyOrders got %v, attempting token refresh...", err)
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return nil, err
+		}
+		return c.doGetMyOrders(page, perPage)
+	}
+	return data, err
+}
+
+func (c *Client) doGetMyOrders(page, perPage int) (map[string]interface{}, error) {
+	if err := c.WarmUp(); err != nil {
+		log.Printf("[vinted] warmup failed before GetMyOrders: %v", err)
+	}
+	if page <= 0 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 20
+	}
+	u := fmt.Sprintf("https://%s/api/v2/my/transactions/sold?page=%d&per_page=%d", c.session.Domain, page, perPage)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create GetMyOrders request: %w", err)
+	}
+	req.Header = c.apiHeaders()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GetMyOrders request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("[vinted] GET /api/v2/my/transactions/sold -> %d (%.300s)", resp.StatusCode, string(body))
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(body), 300))
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal GetMyOrders: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetShipmentLabel(transactionID int64) ([]byte, string, error) {
+	data, ct, err := c.doGetShipmentLabel(transactionID)
+	if err != nil && (strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "302")) && c.session.RefreshToken != "" {
+		log.Printf("[vinted] GetShipmentLabel got %v, attempting token refresh...", err)
+		if refreshErr := c.RefreshAccessToken(); refreshErr != nil {
+			log.Printf("[vinted] token refresh failed: %v", refreshErr)
+			return nil, "", err
+		}
+		return c.doGetShipmentLabel(transactionID)
+	}
+	return data, ct, err
+}
+
+func (c *Client) doGetShipmentLabel(transactionID int64) ([]byte, string, error) {
+	u := fmt.Sprintf("https://%s/api/v2/transactions/%d", c.session.Domain, transactionID)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("create transaction request: %w", err)
+	}
+	req.Header = c.apiHeaders()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("transaction request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, "", fmt.Errorf("transaction detail HTTP %d: %s", resp.StatusCode, truncate(string(body), 300))
+	}
+	var tx map[string]interface{}
+	if err := json.Unmarshal(body, &tx); err != nil {
+		return nil, "", fmt.Errorf("unmarshal transaction: %w", err)
+	}
+
+	labelURL := ""
+	if txData, ok := tx["transaction"].(map[string]interface{}); ok {
+		if shipment, ok := txData["shipment"].(map[string]interface{}); ok {
+			if lurl, ok := shipment["label_url"].(string); ok {
+				labelURL = lurl
+			}
+		}
+		if labelURL == "" {
+			if lurl, ok := txData["shipping_label_url"].(string); ok {
+				labelURL = lurl
+			}
+		}
+	}
+	if labelURL == "" {
+		return nil, "", fmt.Errorf("no label URL found in transaction %d", transactionID)
+	}
+
+	labelReq, err := http.NewRequest("GET", labelURL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("create label download request: %w", err)
+	}
+	labelResp, err := c.httpClient.Do(labelReq)
+	if err != nil {
+		return nil, "", fmt.Errorf("label download failed: %w", err)
+	}
+	defer labelResp.Body.Close()
+	pdf, _ := io.ReadAll(labelResp.Body)
+	return pdf, labelResp.Header.Get("Content-Type"), nil
+}
+
 func (c *Client) doSearchCatalog(catalogID int, region string, page, perPage int, order string) (map[string]interface{}, error) {
 	if err := c.WarmUp(); err != nil {
 		log.Printf("[vinted] warmup failed before catalog search: %v", err)

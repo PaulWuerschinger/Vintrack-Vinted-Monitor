@@ -58,6 +58,9 @@ func (s *Server) Start() error {
 
 	mux.HandleFunc("GET /api/catalog/search", s.handleCatalogSearch)
 
+	mux.HandleFunc("GET /api/orders/sold", s.handleMyOrders)
+	mux.HandleFunc("GET /api/orders/{id}/label", s.handleShipmentLabel)
+
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok"})
 	})
@@ -1028,4 +1031,59 @@ func (s *Server) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, 200, result)
+}
+
+func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
+	_, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	page := 1
+	if raw := strings.TrimSpace(r.URL.Query().Get("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	perPage := 20
+	if raw := strings.TrimSpace(r.URL.Query().Get("per_page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 && parsed <= 100 {
+			perPage = parsed
+		}
+	}
+
+	result, err := client.GetMyOrders(page, perPage)
+	if err != nil {
+		writeError(w, "GetMyOrders failed: "+err.Error(), 502)
+		return
+	}
+	writeJSON(w, 200, result)
+}
+
+func (s *Server) handleShipmentLabel(w http.ResponseWriter, r *http.Request) {
+	_, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	idStr := r.PathValue("id")
+	transactionID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || transactionID <= 0 {
+		writeError(w, "invalid transaction id", 400)
+		return
+	}
+
+	pdf, contentType, err := client.GetShipmentLabel(transactionID)
+	if err != nil {
+		writeError(w, "GetShipmentLabel failed: "+err.Error(), 502)
+		return
+	}
+
+	if contentType == "" {
+		contentType = "application/pdf"
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", "inline; filename=label.pdf")
+	w.WriteHeader(200)
+	w.Write(pdf)
 }
