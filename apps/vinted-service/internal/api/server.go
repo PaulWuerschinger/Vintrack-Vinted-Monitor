@@ -205,7 +205,11 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 		LastCheck:    time.Now().UTC().Format(time.RFC3339),
 	}
 
-	client, err := vinted.NewClient(&sess)
+	proxyURL := ""
+	if s.proxyMgr != nil {
+		proxyURL = s.proxyMgr.Next()
+	}
+	client, err := vinted.NewClientWithProxy(&sess, proxyURL)
 	if err != nil {
 		writeError(w, "failed to create client: "+err.Error(), 500)
 		return

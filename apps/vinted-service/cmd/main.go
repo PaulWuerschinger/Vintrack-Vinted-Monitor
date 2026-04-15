@@ -30,8 +30,15 @@ func main() {
 	}
 	defer sessionMgr.Close()
 
+	proxyFile := getEnv("PROXY_FILE", "/app/proxies.txt")
+	proxyMgr := proxy.Load(proxyFile)
+
 	go sessionMgr.StartKeepAlive(func(sess *session.VintedSession) bool {
-		client, err := vinted.NewClient(sess)
+		proxyURL := ""
+		if proxyMgr != nil {
+			proxyURL = proxyMgr.Next()
+		}
+		client, err := vinted.NewClientWithProxy(sess, proxyURL)
 		if err != nil {
 			return false
 		}
@@ -61,8 +68,6 @@ func main() {
 		return false
 	})
 
-	proxyFile := getEnv("PROXY_FILE", "/app/proxies.txt")
-	proxyMgr := proxy.Load(proxyFile)
 
 	server := api.NewServer(sessionMgr, proxyMgr, listenAddr)
 
