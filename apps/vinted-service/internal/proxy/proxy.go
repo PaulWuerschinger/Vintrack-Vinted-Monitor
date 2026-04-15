@@ -17,6 +17,24 @@ type Manager struct {
 
 func Load(filepath string) *Manager {
 	m := &Manager{}
+
+	// Try PROXY_LIST env var first (comma-separated, for Railway)
+	if envList := os.Getenv("PROXY_LIST"); envList != "" {
+		for _, line := range strings.Split(envList, ",") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			p := parseLine(line)
+			if p != "" {
+				m.proxies = append(m.proxies, p)
+			}
+		}
+		log.Printf("Loaded %d proxies from PROXY_LIST env", len(m.proxies))
+		return m
+	}
+
+	// Fallback: load from file
 	file, err := os.Open(filepath)
 	if err != nil {
 		log.Printf("No proxy file at %s, running without proxies", filepath)
@@ -35,7 +53,7 @@ func Load(filepath string) *Manager {
 			m.proxies = append(m.proxies, p)
 		}
 	}
-	log.Printf("Loaded %d proxies for vinted-service", len(m.proxies))
+	log.Printf("Loaded %d proxies from file %s", len(m.proxies), filepath)
 	return m
 }
 
