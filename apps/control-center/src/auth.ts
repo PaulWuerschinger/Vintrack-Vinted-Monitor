@@ -11,17 +11,30 @@ function getResellrPool() {
   return resellrPool;
 }
 
-async function checkPremium(userId: string): Promise<boolean> {
+async function checkPremium(userId: string, email?: string): Promise<boolean> {
+  const pool = getResellrPool();
   try {
-    const pool = getResellrPool();
-    const result = await pool.query(
+    const byId = await pool.query(
       `SELECT id FROM "Subscription" WHERE user_id = $1 AND UPPER(status) IN ('ACTIVE', 'TRIALING') AND current_period_end > NOW() LIMIT 1`,
       [userId]
     );
-    return result.rows.length > 0;
-  } catch {
-    return false;
+    if (byId.rows.length > 0) return true;
+  } catch (err) {
+    console.error("[premium-check] DB error by id:", err);
   }
+  // Fallback: check by email (handles cases where Vintrack user id != Resellr user id)
+  if (email) {
+    try {
+      const byEmail = await pool.query(
+        `SELECT s.id FROM "Subscription" s JOIN users u ON s.user_id = u.id WHERE LOWER(u.email) = LOWER($1) AND UPPER(s.status) IN ('ACTIVE', 'TRIALING') AND s.current_period_end > NOW() LIMIT 1`,
+        [email]
+      );
+      return byEmail.rows.length > 0;
+    } catch (err) {
+      console.error("[premium-check] DB error by email:", err);
+    }
+  }
+  return false;
 }
 
 async function syncVintedTokens(userId: string, jwt: string) {
@@ -72,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const data = await res.json();
           if (!data.user) return null;
 
-          const isPremium = await checkPremium(data.user.id);
+          const isPremium = await checkPremium(data.user.id, data.user.email);
           const role = isPremium ? "premium" : "free";
 
           const vintrackUser = await db.$transaction(async (tx) => {

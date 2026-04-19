@@ -13,19 +13,36 @@ function getResellrPool() {
   return resellrPool;
 }
 
-async function checkPremiumDirect(userId: string): Promise<boolean> {
+async function checkPremiumDirect(userId: string, email?: string): Promise<boolean> {
+  const pool = getResellrPool();
   try {
-    const pool = getResellrPool();
-    const result = await pool.query(
+    const byId = await pool.query(
       `SELECT id FROM "Subscription" WHERE user_id = $1 AND UPPER(status) IN ('ACTIVE', 'TRIALING') AND current_period_end > NOW() LIMIT 1`,
       [userId]
     );
-    console.log(`[paywall-check] userId=${userId} found=${result.rows.length}`);
-    return result.rows.length > 0;
+    if (byId.rows.length > 0) {
+      console.log(`[paywall-check] premium by id userId=${userId}`);
+      return true;
+    }
   } catch (err) {
-    console.error(`[paywall-check] DB error for userId=${userId}:`, err);
-    return false;
+    console.error(`[paywall-check] DB error by id ${userId}:`, err);
   }
+  if (email) {
+    try {
+      const byEmail = await pool.query(
+        `SELECT s.id FROM "Subscription" s JOIN users u ON s.user_id = u.id WHERE LOWER(u.email) = LOWER($1) AND UPPER(s.status) IN ('ACTIVE', 'TRIALING') AND s.current_period_end > NOW() LIMIT 1`,
+        [email]
+      );
+      if (byEmail.rows.length > 0) {
+        console.log(`[paywall-check] premium by email ${email}`);
+        return true;
+      }
+    } catch (err) {
+      console.error(`[paywall-check] DB error by email ${email}:`, err);
+    }
+  }
+  console.log(`[paywall-check] NOT premium userId=${userId} email=${email}`);
+  return false;
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,28 +52,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
-  console.log(`[paywall-check] session user.id=${session.user.id} email=${session.user.email}`);
-  // Check premium directly against Resellr DB (not cached role)
-  const isPremium = await checkPremiumDirect(session.user.id);
+  // Resolve email from session or DB lookup
+  const sessionEmail = session.user.email ?? undefined;
+  const email = sessionEmail ?? (await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { email: true },
+  }))?.email ?? undefined;
 
+  const isPremium = await checkPremiumDirect(session.user.id, email ?? undefined);
   if (!isPremium) {
-    // Also check by email in case IDs don't match
-    const dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { email: true },
-    });
-    if (dbUser?.email) {
-      const pool = getResellrPool();
-      const byEmail = await pool.query(
-        `SELECT s.id FROM "Subscription" s JOIN users u ON s.user_id = u.id WHERE LOWER(u.email) = LOWER($1) AND UPPER(s.status) IN ('ACTIVE', 'TRIALING') AND s.current_period_end > NOW() LIMIT 1`,
-        [dbUser.email]
-      ).catch(() => ({ rows: [] }));
-      if (byEmail.rows.length === 0) {
-        redirect("/paywall");
-      }
-    } else {
-      redirect("/paywall");
-    }
+    redirect("/paywall");
   }
 
   const user = { ...session.user, role: "premium" };
