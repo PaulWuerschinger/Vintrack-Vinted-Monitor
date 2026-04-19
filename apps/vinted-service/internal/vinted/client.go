@@ -2053,7 +2053,14 @@ func (c *Client) doGetMyOrders(page, perPage int) (map[string]interface{}, error
 	if perPage <= 0 {
 		perPage = 20
 	}
-	u := fmt.Sprintf("https://%s/api/v2/my/transactions/sold?page=%d&per_page=%d", c.session.Domain, page, perPage)
+	// Vinted deprecated /api/v2/my/transactions/sold in 2026.
+	// Sold items are now accessible via wardrobe with status_ids[]=6 (sold).
+	vintedUserID, _ := parseUserIDFromJWT(c.session.AccessToken)
+	if vintedUserID == 0 {
+		return nil, fmt.Errorf("could not extract vinted user ID from access token")
+	}
+	u := fmt.Sprintf("https://%s/api/v2/wardrobe/%d/items?page=%d&per_page=%d&status_ids[]=6&order=newest_first",
+		c.session.Domain, vintedUserID, page, perPage)
 	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create GetMyOrders request: %w", err)
@@ -2065,7 +2072,7 @@ func (c *Client) doGetMyOrders(page, perPage int) (map[string]interface{}, error
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	log.Printf("[vinted] GET /api/v2/my/transactions/sold -> %d (%.300s)", resp.StatusCode, string(body))
+	log.Printf("[vinted] GET /api/v2/wardrobe/%d/items?status=sold -> %d (%.300s)", vintedUserID, resp.StatusCode, string(body))
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(body), 300))
 	}
