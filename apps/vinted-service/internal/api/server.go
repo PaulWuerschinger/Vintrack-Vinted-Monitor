@@ -195,6 +195,11 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize domain: ensure www. prefix
+	if !strings.HasPrefix(req.Domain, "www.") {
+		req.Domain = "www." + req.Domain
+	}
+
 	sess := session.VintedSession{
 		UserID:       userID,
 		AccessToken:  req.AccessToken,
@@ -983,6 +988,11 @@ func (s *Server) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
 		if d, ok := domainMap[region]; ok {
 			anonSession.Domain = d
 		}
+	}
+
+	// Normalize domain: ensure www. prefix
+	if !strings.HasPrefix(anonSession.Domain, "www.") {
+		anonSession.Domain = "www." + anonSession.Domain
 	}
 
 	proxyURL := ""
