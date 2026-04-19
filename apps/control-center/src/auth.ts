@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import * as jose from "jose"
 import { db } from "@/lib/db"
 import { Pool } from "pg"
 
@@ -132,6 +133,63 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: vintrackUser.name,
           };
         } catch {
+          return null;
+        }
+      },
+    }),
+    Credentials({
+      id: "sso-token",
+      name: "Resellr SSO",
+      credentials: {
+        token: { label: "Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const token = credentials?.token as string | undefined;
+        if (!token) return null;
+        const secret = process.env.RESELLR_JWT_SECRET;
+        if (!secret) {
+          console.error("[sso] RESELLR_JWT_SECRET not configured");
+          return null;
+        }
+        try {
+          const { payload } = await jose.jwtVerify(
+            token,
+            new TextEncoder().encode(secret)
+          );
+          if (payload.purpose !== "sniping-sso") return null;
+          const userId = payload.userId as string;
+          const email = payload.email as string;
+          const name = (payload.name as string | undefined) ?? email;
+          if (!userId || !email) return null;
+
+          // Check premium before allowing access
+          const isPremium = await checkPremium(userId, email);
+          const role = isPremium ? "premium" : "free";
+
+          const vintrackUser = await db.$transaction(async (tx) => {
+            const existingByEmail = await tx.user.findUnique({
+              where: { email },
+            });
+            if (existingByEmail) {
+              return tx.user.update({
+                where: { id: existingByEmail.id },
+                data: { name, role },
+              });
+            }
+            return tx.user.upsert({
+              where: { id: userId },
+              update: { email, name, role },
+              create: { id: userId, email, name, role },
+            });
+          });
+
+          return {
+            id: vintrackUser.id,
+            email: vintrackUser.email,
+            name: vintrackUser.name,
+          };
+        } catch (err) {
+          console.error("[sso] verify failed:", err);
           return null;
         }
       },
