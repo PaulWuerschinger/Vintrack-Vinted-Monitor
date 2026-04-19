@@ -20,8 +20,10 @@ async function checkPremiumDirect(userId: string): Promise<boolean> {
       `SELECT id FROM "Subscription" WHERE user_id = $1 AND UPPER(status) IN ('ACTIVE', 'TRIALING') AND current_period_end > NOW() LIMIT 1`,
       [userId]
     );
+    console.log(`[paywall-check] userId=${userId} found=${result.rows.length}`);
     return result.rows.length > 0;
-  } catch {
+  } catch (err) {
+    console.error(`[paywall-check] DB error for userId=${userId}:`, err);
     return false;
   }
 }
@@ -33,6 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
+  console.log(`[paywall-check] session user.id=${session.user.id} email=${session.user.email}`);
   // Check premium directly against Resellr DB (not cached role)
   const isPremium = await checkPremiumDirect(session.user.id);
 
