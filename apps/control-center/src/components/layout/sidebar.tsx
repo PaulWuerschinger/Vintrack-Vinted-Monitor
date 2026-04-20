@@ -2,22 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { LayoutDashboard, PlusCircle, Radio, LogOut, Globe, Shield, User, Star, BookOpen, X, Heart, MessageCircle, ExternalLink, Store } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/theme-toggle";
 
-const ACCOUNT_SEEN_KEY = "vintrack:account-tab-seen";
+import { LayoutDashboard, PlusCircle, Radio, LogOut, Shield, BookOpen, X, Heart, MessageCircle, Store } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 
 const navItems = [
   { href: "/dashboard", label: "Monitors", icon: LayoutDashboard },
   { href: "/feed", label: "Live Feed", icon: Radio },
-  { href: "/proxies", label: "Proxy Groups", icon: Globe },
-  { href: "/account", label: "Account", icon: User },
-  { href: "/your-listings", label: "Your Listings", icon: Store },
-  { href: "/liked", label: "Liked Items", icon: Heart },
-  { href: "/chats", label: "Chats", icon: MessageCircle },
-  { href: "/guide", label: "Guide", icon: BookOpen },
+];
+
+const comingSoonItems = [
+  { label: "Your Listings", icon: Store },
+  { label: "Liked Items", icon: Heart },
+  { label: "Chats", icon: MessageCircle },
 ];
 
 const adminNavItems = [
@@ -32,13 +30,7 @@ interface SidebarProps {
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const [showAccountBadge, setShowAccountBadge] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
 
-    return !localStorage.getItem(ACCOUNT_SEEN_KEY);
-  });
 
   const initials = user?.name
     ? user.name
@@ -58,11 +50,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       <div className="flex h-14 items-center justify-between border-b border-sidebar-border/80 px-5">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-            <span className="text-xs font-bold">V</span>
+            <span className="text-xs font-bold">R</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-[15px] font-semibold tracking-tight">
-              Vintrack
+              Resellr Sniping
             </span>
           </div>
         </Link>
@@ -86,13 +78,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => {
-                if (item.href === "/account" && showAccountBadge) {
-                  localStorage.setItem(ACCOUNT_SEEN_KEY, "1");
-                  setShowAccountBadge(false);
-                }
-                onClose?.();
-              }}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors",
                 isActive
@@ -107,14 +93,28 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 )}
               />
               {item.label}
-              {item.href === "/account" && showAccountBadge && (
-                <span className="ml-auto text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                  New
-                </span>
-              )}
+
             </Link>
           );
         })}
+
+        <div className="pt-4">
+          <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-widest text-sidebar-foreground/40">
+            Coming Soon
+          </p>
+          {comingSoonItems.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/30 cursor-not-allowed"
+            >
+              <item.icon className="w-4 h-4 text-sidebar-foreground/20" />
+              {item.label}
+              <span className="ml-auto text-[8px] font-bold bg-sidebar-accent/50 text-sidebar-foreground/40 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                Soon
+              </span>
+            </div>
+          ))}
+        </div>
 
         <div className="pt-4">
           <Link
@@ -127,33 +127,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           </Link>
         </div>
 
-        <div className="pt-4">
-          <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-widest text-sidebar-foreground/40">
-            Community
-          </p>
-          <a
-            href="https://discord.gg/WbEpEjaWjP"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-blue-500 transition-colors hover:bg-blue-500/12 hover:text-blue-400"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Join Discord
-            <span className="rounded-full bg-blue-500 text-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
-              New
-            </span>
-            <ExternalLink className="ml-auto w-3.5 h-3.5 opacity-70" />
-          </a>
-          <a
-            href="https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-amber-500 transition-colors hover:bg-amber-500/12 hover:text-amber-400"
-          >
-            <Star className="w-4 h-4" />
-            Star on GitHub
-          </a>
-        </div>
+        
 
         {user?.role === "admin" && (
           <div className="pt-4">
@@ -190,7 +164,6 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       </nav>
 
       <div className="border-t border-sidebar-border/80 p-3">
-        <ThemeToggle className="mb-3" />
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           {user?.image ? (
             <img
@@ -228,10 +201,13 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             <LogOut className="w-3.5 h-3.5" />
           </Link>
         </div>
-        <div className="mt-2 px-2 flex justify-center">
+        <div className="mt-2 px-2 flex flex-col items-center gap-1">
           <p className="text-[10px] font-medium text-sidebar-foreground/40">
-            Vintrack v{process.env.NEXT_PUBLIC_APP_VERSION}
+            Resellr Sniping v{process.env.NEXT_PUBLIC_APP_VERSION}
           </p>
+          <a href="https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor" target="_blank" rel="noopener noreferrer" className="text-[9px] text-sidebar-foreground/30 hover:text-sidebar-foreground/50 transition-colors">
+            Powered by Vintrack · MIT License
+          </a>
         </div>
       </div>
     </aside>

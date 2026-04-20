@@ -1,0 +1,4 @@
+proxies.txt
+.env
+.env.*
+*.log

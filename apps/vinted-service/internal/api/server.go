@@ -2,23 +2,28 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"vintrack-vinted/internal/proxy"
 	"vintrack-vinted/internal/session"
 	"vintrack-vinted/internal/vinted"
 )
 
 type Server struct {
 	sessions   *session.Manager
+	proxyMgr   *proxy.Manager
 	listenAddr string
+	apiKey     string
 }
 
-func NewServer(sessions *session.Manager, addr string) *Server {
-	return &Server{sessions: sessions, listenAddr: addr}
+func NewServer(sessions *session.Manager, proxyMgr *proxy.Manager, addr string) *Server {
+	return &Server{sessions: sessions, proxyMgr: proxyMgr, listenAddr: addr, apiKey: os.Getenv("API_KEY")}
 }
 
 func (s *Server) Start() error {
@@ -44,6 +49,18 @@ func (s *Server) Start() error {
 
 	mux.HandleFunc("POST /api/account/refresh", s.handleRefreshToken)
 
+
+	mux.HandleFunc("POST /api/photos/upload", s.handlePhotoUpload)
+	mux.HandleFunc("POST /api/listings/create", s.handleCreateListing)
+	mux.HandleFunc("PATCH /api/listings/{id}", s.handleUpdateListing)
+	mux.HandleFunc("DELETE /api/listings/{id}", s.handleDeleteListing)
+	mux.HandleFunc("POST /api/listings/{id}/relist", s.handleRelist)
+
+	mux.HandleFunc("GET /api/catalog/search", s.handleCatalogSearch)
+
+	mux.HandleFunc("GET /api/orders/sold", s.handleMyOrders)
+	mux.HandleFunc("GET /api/orders/{id}/label", s.handleShipmentLabel)
+
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok"})
 	})
@@ -55,11 +72,17 @@ func (s *Server) Start() error {
 func (s *Server) withMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-ID")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-ID, X-API-Key")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(204)
 			return
+		}
+		if s.apiKey != "" && r.URL.Path != "/health" {
+			if r.Header.Get("X-API-Key") != s.apiKey {
+				writeError(w, "invalid API key", 403)
+				return
+			}
 		}
 		start := time.Now()
 		next.ServeHTTP(w, r)
@@ -98,7 +121,11 @@ func (s *Server) getSessionAndClient(r *http.Request, w http.ResponseWriter) (*s
 		return nil, nil, false
 	}
 
-	client, err := vinted.NewClient(sess)
+	proxyURL := ""
+	if s.proxyMgr != nil {
+		proxyURL = s.proxyMgr.Next()
+	}
+	client, err := vinted.NewClientWithProxy(sess, proxyURL)
 	if err != nil {
 		writeError(w, "failed to create Vinted client", 500)
 		return nil, nil, false
@@ -168,6 +195,11 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize domain: ensure www. prefix
+	if !strings.HasPrefix(req.Domain, "www.") {
+		req.Domain = "www." + req.Domain
+	}
+
 	sess := session.VintedSession{
 		UserID:       userID,
 		AccessToken:  req.AccessToken,
@@ -178,7 +210,11 @@ func (s *Server) handleLink(w http.ResponseWriter, r *http.Request) {
 		LastCheck:    time.Now().UTC().Format(time.RFC3339),
 	}
 
-	client, err := vinted.NewClient(&sess)
+	proxyURL := ""
+	if s.proxyMgr != nil {
+		proxyURL = s.proxyMgr.Next()
+	}
+	client, err := vinted.NewClientWithProxy(&sess, proxyURL)
 	if err != nil {
 		writeError(w, "failed to create client: "+err.Error(), 500)
 		return
@@ -662,7 +698,11 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := vinted.NewClient(sess)
+	proxyURL := ""
+	if s.proxyMgr != nil {
+		proxyURL = s.proxyMgr.Next()
+	}
+	client, err := vinted.NewClientWithProxy(sess, proxyURL)
 	if err != nil {
 		writeError(w, "failed to create client", 500)
 		return
@@ -700,4 +740,364 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		"vinted_id":   updated.VintedUserID,
 		"domain":      updated.Domain,
 	})
+}
+
+// ── Listing Management Handlers ─────────────────────────────────────────
+
+func (s *Server) handlePhotoUpload(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeError(w, "invalid multipart form: "+err.Error(), 400)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, "file field is required", 400)
+		return
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		writeError(w, "failed to read file", 500)
+		return
+	}
+
+	if len(fileData) > 20<<20 {
+		writeError(w, "file too large (max 20MB)", 400)
+		return
+	}
+
+	photoID, err := client.UploadPhoto(fileData, header.Filename)
+	if err != nil {
+		writeError(w, "photo upload failed: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	writeJSON(w, 200, map[string]interface{}{"id": photoID})
+}
+
+type createListingRequest struct {
+	Title         string                   `json:"title"`
+	Description   string                   `json:"description"`
+	Price         string                   `json:"price"`
+	Currency      string                   `json:"currency"`
+	Brand         string                   `json:"brand,omitempty"`
+	BrandID       *int64                   `json:"brand_id,omitempty"`
+	CatalogID     int64                    `json:"catalog_id"`
+	StatusID      *int64                   `json:"status_id,omitempty"`
+	PackageSizeID *int64                   `json:"package_size_id,omitempty"`
+	ColorIDs      []int64                  `json:"color_ids,omitempty"`
+	PhotoIDs      []map[string]interface{} `json:"photo_ids"`
+}
+
+func (s *Server) handleCreateListing(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	var req createListingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "invalid request body", 400)
+		return
+	}
+
+	if req.Title == "" {
+		writeError(w, "title is required", 400)
+		return
+	}
+	if req.Price == "" {
+		writeError(w, "price is required", 400)
+		return
+	}
+	if len(req.PhotoIDs) == 0 {
+		writeError(w, "at least one photo is required", 400)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"title":       req.Title,
+		"description": req.Description,
+		"price":       req.Price,
+		"currency":    req.Currency,
+		"photo_ids":   req.PhotoIDs,
+	}
+
+	if req.Brand != "" {
+		payload["brand"] = req.Brand
+	}
+	if req.BrandID != nil {
+		payload["brand_id"] = *req.BrandID
+	}
+	if req.CatalogID != 0 {
+		payload["catalog_id"] = req.CatalogID
+	}
+	if req.StatusID != nil {
+		payload["status_id"] = *req.StatusID
+	}
+	if req.PackageSizeID != nil {
+		payload["package_size_id"] = *req.PackageSizeID
+	}
+	if len(req.ColorIDs) > 0 {
+		payload["color_ids"] = req.ColorIDs
+	}
+
+	itemID, itemURL, err := client.CreateItem(payload)
+	if err != nil {
+		writeError(w, "create listing failed: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"item_id": itemID,
+		"url":     itemURL,
+	})
+}
+
+func (s *Server) handleUpdateListing(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || itemID == 0 {
+		writeError(w, "invalid listing id", 400)
+		return
+	}
+
+	var payload map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeError(w, "invalid request body", 400)
+		return
+	}
+
+	if len(payload) == 0 {
+		writeError(w, "at least one field to update is required", 400)
+		return
+	}
+
+	if err := client.UpdateItem(itemID, payload); err != nil {
+		writeError(w, "update listing failed: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"status":  "updated",
+		"item_id": itemID,
+	})
+}
+
+func (s *Server) handleDeleteListing(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || itemID == 0 {
+		writeError(w, "invalid listing id", 400)
+		return
+	}
+
+	if err := client.DeleteItem(itemID); err != nil {
+		writeError(w, "delete listing failed: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"status":  "deleted",
+		"item_id": itemID,
+	})
+}
+
+func (s *Server) handleRelist(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || itemID == 0 {
+		writeError(w, "invalid listing id", 400)
+		return
+	}
+
+	// 1. Hide the item
+	if err := client.HideItem(itemID); err != nil {
+		writeError(w, "relist: failed to hide item: "+err.Error(), 502)
+		return
+	}
+
+	log.Printf("[relist] hidden item %d, waiting before unhide...", itemID)
+
+	// 2. Wait 2 seconds for Vinted to register the change
+	time.Sleep(2 * time.Second)
+
+	// 3. Unhide the item (makes it appear as freshly listed)
+	if err := client.UnhideItem(itemID); err != nil {
+		writeError(w, "relist: hid item but failed to unhide: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	log.Printf("[relist] item %d relisted via hide/unhide", itemID)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"item_id": itemID,
+		"status":  "relisted",
+	})
+}
+
+func (s *Server) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
+	// Catalog search is public (no user token needed) — create anonymous client
+	apiKey := s.apiKey
+	if apiKey != "" && r.Header.Get("X-API-Key") != apiKey {
+		writeError(w, "invalid API key", 403)
+		return
+	}
+
+	anonSession := &session.VintedSession{
+		Domain:      "vinted.de",
+		Status:      "active",
+	}
+	region := strings.TrimSpace(r.URL.Query().Get("region"))
+	if region != "" {
+		domainMap := map[string]string{
+			"de": "vinted.de", "fr": "vinted.fr", "it": "vinted.it", "es": "vinted.es",
+			"nl": "vinted.nl", "pl": "vinted.pl", "be": "vinted.be", "at": "vinted.at",
+			"uk": "vinted.co.uk", "cz": "vinted.cz", "lt": "vinted.lt", "se": "vinted.se",
+			"hu": "vinted.hu", "ro": "vinted.ro", "dk": "vinted.dk", "fi": "vinted.fi",
+			"hr": "vinted.hr", "pt": "vinted.pt",
+		}
+		if d, ok := domainMap[region]; ok {
+			anonSession.Domain = d
+		}
+	}
+
+	// Normalize domain: ensure www. prefix
+	if !strings.HasPrefix(anonSession.Domain, "www.") {
+		anonSession.Domain = "www." + anonSession.Domain
+	}
+
+	proxyURL := ""
+	if s.proxyMgr != nil {
+		proxyURL = s.proxyMgr.Next()
+	}
+	client, err := vinted.NewClientWithProxy(anonSession, proxyURL)
+	if err != nil {
+		writeError(w, "failed to create client", 500)
+		return
+	}
+	if err := client.WarmUp(); err != nil {
+		log.Printf("[catalog] warmup warning: %v", err)
+	}
+
+	catalogIDStr := strings.TrimSpace(r.URL.Query().Get("catalog_id"))
+	if catalogIDStr == "" {
+		writeError(w, "catalog_id is required", 400)
+		return
+	}
+	catalogID, err := strconv.Atoi(catalogIDStr)
+	if err != nil || catalogID <= 0 {
+		writeError(w, "invalid catalog_id", 400)
+		return
+	}
+
+	page := 1
+	if raw := strings.TrimSpace(r.URL.Query().Get("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	perPage := 20
+	if raw := strings.TrimSpace(r.URL.Query().Get("per_page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 && parsed <= 100 {
+			perPage = parsed
+		}
+	}
+
+	order := strings.TrimSpace(r.URL.Query().Get("order"))
+	if order == "" {
+		order = "newest_first"
+	}
+
+	result, searchErr := client.SearchCatalog(catalogID, region, page, perPage, order)
+	if searchErr != nil {
+		writeError(w, "catalog search failed: "+searchErr.Error(), 502)
+		return
+	}
+
+	writeJSON(w, 200, result)
+}
+
+func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
+	_, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	page := 1
+	if raw := strings.TrimSpace(r.URL.Query().Get("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	perPage := 20
+	if raw := strings.TrimSpace(r.URL.Query().Get("per_page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 && parsed <= 100 {
+			perPage = parsed
+		}
+	}
+
+	result, err := client.GetMyOrders(page, perPage)
+	if err != nil {
+		writeError(w, "GetMyOrders failed: "+err.Error(), 502)
+		return
+	}
+	writeJSON(w, 200, result)
+}
+
+func (s *Server) handleShipmentLabel(w http.ResponseWriter, r *http.Request) {
+	_, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	idStr := r.PathValue("id")
+	transactionID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || transactionID <= 0 {
+		writeError(w, "invalid transaction id", 400)
+		return
+	}
+
+	pdf, contentType, err := client.GetShipmentLabel(transactionID)
+	if err != nil {
+		writeError(w, "GetShipmentLabel failed: "+err.Error(), 502)
+		return
+	}
+
+	if contentType == "" {
+		contentType = "application/pdf"
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", "inline; filename=label.pdf")
+	w.WriteHeader(200)
+	w.Write(pdf)
 }

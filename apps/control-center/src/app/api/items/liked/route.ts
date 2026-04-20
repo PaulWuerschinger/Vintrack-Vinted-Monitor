@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-
-const API_URL = process.env.VINTED_SERVICE_URL || "http://localhost:4000";
+import { createVintedServiceHeaders, VINTED_SERVICE_URL } from "@/lib/vinted-service";
 
 export async function GET() {
   const session = await auth();
@@ -10,8 +9,8 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(`${API_URL}/api/items/liked`, {
-      headers: { "X-User-ID": session.user.id },
+    const res = await fetch(`${VINTED_SERVICE_URL}/api/items/liked`, {
+      headers: createVintedServiceHeaders(session.user.id, false),
       cache: "no-store",
     });
     const data = await res.json();

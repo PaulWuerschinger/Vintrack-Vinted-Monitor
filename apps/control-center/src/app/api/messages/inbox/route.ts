@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-
-const API_URL = process.env.VINTED_SERVICE_URL || "http://localhost:4000";
+import { createVintedServiceHeaders, VINTED_SERVICE_URL } from "@/lib/vinted-service";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -10,13 +9,12 @@ export async function GET(req: NextRequest) {
   }
 
   const search = req.nextUrl.searchParams.toString();
-  const url = `${API_URL}/api/messages/inbox${search ? `?${search}` : ""}`;
+  const url = `${VINTED_SERVICE_URL}/api/messages/inbox${search ? `?${search}` : ""}`;
 
   try {
     const res = await fetch(url, {
       headers: {
-        "Content-Type": "application/json",
-        "X-User-ID": session.user.id,
+        ...createVintedServiceHeaders(session.user.id),
       },
       cache: "no-store",
     });
