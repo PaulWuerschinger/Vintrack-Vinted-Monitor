@@ -247,7 +247,7 @@ func nilIfEmpty(v string) interface{} {
 
 func (s *Store) GetActiveMonitors() ([]model.Monitor, error) {
 	rows, err := s.db.Query(`
-		SELECT m.id, m.name, m.query, m.price_min, m.price_max, m.size_id, m.catalog_ids, m.brand_ids, m.color_ids, m.status_ids, m.region, m.allowed_countries, m.status, m.discord_webhook, m.webhook_active, m.proxy_group_id, pg.name, pg.bandwidth_limit_bytes, COALESCE(pg.bandwidth_rx_bytes, 0), COALESCE(pg.bandwidth_tx_bytes, 0), pg.bandwidth_reset_at, pg.proxies
+		SELECT m.id, m.name, m.query, m.price_min, m.price_max, m.size_id, m.catalog_ids, m.brand_ids, m.color_ids, m.status_ids, m.region, m.allowed_countries, m.status, m.discord_webhook, m.webhook_active, m.proxy_group_id, pg.name, pg.bandwidth_limit_bytes, COALESCE(pg.bandwidth_rx_bytes, 0), COALESCE(pg.bandwidth_tx_bytes, 0), pg.bandwidth_reset_at, pg.proxies, m."userId", m.auto_bid_enabled, m.auto_bid_discount_pct, m.auto_bid_max_price::text
 		FROM monitors m
 		LEFT JOIN proxy_groups pg ON m.proxy_group_id = pg.id
 		WHERE m.status = 'active'`)
@@ -259,7 +259,7 @@ func (s *Store) GetActiveMonitors() ([]model.Monitor, error) {
 	var monitors []model.Monitor
 	for rows.Next() {
 		var m model.Monitor
-		if err := rows.Scan(&m.ID, &m.Name, &m.Query, &m.PriceMin, &m.PriceMax, &m.SizeID, &m.CatalogIDs, &m.BrandIDs, &m.ColorIDs, &m.StatusIDs, &m.Region, &m.AllowedCountries, &m.Status, &m.DiscordWebhook, &m.WebhookActive, &m.ProxyGroupID, &m.ProxyGroupName, &m.ProxyGroupLimitBytes, &m.ProxyGroupRxBytes, &m.ProxyGroupTxBytes, &m.ProxyGroupResetAt, &m.Proxies); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.Query, &m.PriceMin, &m.PriceMax, &m.SizeID, &m.CatalogIDs, &m.BrandIDs, &m.ColorIDs, &m.StatusIDs, &m.Region, &m.AllowedCountries, &m.Status, &m.DiscordWebhook, &m.WebhookActive, &m.ProxyGroupID, &m.ProxyGroupName, &m.ProxyGroupLimitBytes, &m.ProxyGroupRxBytes, &m.ProxyGroupTxBytes, &m.ProxyGroupResetAt, &m.Proxies, &m.UserID, &m.AutoBidEnabled, &m.AutoBidDiscountPct, &m.AutoBidMaxPrice); err != nil {
 			return nil, err
 		}
 		s.SyncProxyGroupBandwidthState(m)
@@ -271,11 +271,11 @@ func (s *Store) GetActiveMonitors() ([]model.Monitor, error) {
 func (s *Store) GetMonitorByID(id int) (model.Monitor, error) {
 	var m model.Monitor
 	err := s.db.QueryRow(`
-		SELECT m.id, m.name, m.query, m.price_min, m.price_max, m.size_id, m.catalog_ids, m.brand_ids, m.color_ids, m.status_ids, m.region, m.allowed_countries, m.status, m.discord_webhook, m.webhook_active, m.proxy_group_id, pg.name, pg.bandwidth_limit_bytes, COALESCE(pg.bandwidth_rx_bytes, 0), COALESCE(pg.bandwidth_tx_bytes, 0), pg.bandwidth_reset_at, pg.proxies
+		SELECT m.id, m.name, m.query, m.price_min, m.price_max, m.size_id, m.catalog_ids, m.brand_ids, m.color_ids, m.status_ids, m.region, m.allowed_countries, m.status, m.discord_webhook, m.webhook_active, m.proxy_group_id, pg.name, pg.bandwidth_limit_bytes, COALESCE(pg.bandwidth_rx_bytes, 0), COALESCE(pg.bandwidth_tx_bytes, 0), pg.bandwidth_reset_at, pg.proxies, m."userId", m.auto_bid_enabled, m.auto_bid_discount_pct, m.auto_bid_max_price::text
 		FROM monitors m
 		LEFT JOIN proxy_groups pg ON m.proxy_group_id = pg.id
 		WHERE m.id = $1`, id,
-	).Scan(&m.ID, &m.Name, &m.Query, &m.PriceMin, &m.PriceMax, &m.SizeID, &m.CatalogIDs, &m.BrandIDs, &m.ColorIDs, &m.StatusIDs, &m.Region, &m.AllowedCountries, &m.Status, &m.DiscordWebhook, &m.WebhookActive, &m.ProxyGroupID, &m.ProxyGroupName, &m.ProxyGroupLimitBytes, &m.ProxyGroupRxBytes, &m.ProxyGroupTxBytes, &m.ProxyGroupResetAt, &m.Proxies)
+	).Scan(&m.ID, &m.Name, &m.Query, &m.PriceMin, &m.PriceMax, &m.SizeID, &m.CatalogIDs, &m.BrandIDs, &m.ColorIDs, &m.StatusIDs, &m.Region, &m.AllowedCountries, &m.Status, &m.DiscordWebhook, &m.WebhookActive, &m.ProxyGroupID, &m.ProxyGroupName, &m.ProxyGroupLimitBytes, &m.ProxyGroupRxBytes, &m.ProxyGroupTxBytes, &m.ProxyGroupResetAt, &m.Proxies, &m.UserID, &m.AutoBidEnabled, &m.AutoBidDiscountPct, &m.AutoBidMaxPrice)
 	if err != nil {
 		return model.Monitor{}, err
 	}
@@ -443,3 +443,41 @@ func (s *Store) logHealthErrorOnce(monitorID int, err error) {
 	s.healthErrLog[monitorID] = now
 	log.Printf("set health for monitor %d: %v (suppressing repeats for 60s)", monitorID, err)
 }
+
+// CountBidsToday returns the number of auto_bid_logs rows created for the given
+// user since the current UTC day began. Status is not filtered — pending,
+// success and failed all count against the daily cap to keep attempts bounded.
+func (s *Store) CountBidsToday(userID string) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM auto_bid_logs WHERE user_id = $1 AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`, userID).Scan(&n)
+	return n, err
+}
+
+// InsertBidLog inserts a new pending auto_bid_logs row. Returns (true, nil) on
+// fresh insert, (false, nil) if the (monitor_id, item_id) pair already exists.
+func (s *Store) InsertBidLog(monitorID int, userID string, itemID int64, status string) (bool, error) {
+	res, err := s.db.Exec(`INSERT INTO auto_bid_logs (monitor_id, user_id, item_id, status) VALUES ($1, $2, $3, $4) ON CONFLICT (monitor_id, item_id) DO NOTHING`, monitorID, userID, itemID, status)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// UpdateBidLog updates the final status/price/error for an auto_bid_logs row.
+func (s *Store) UpdateBidLog(monitorID int, itemID int64, status string, priceEUR *float64, errMsg string) error {
+	var priceVal interface{}
+	if priceEUR != nil {
+		priceVal = *priceEUR
+	}
+	var errVal interface{}
+	if errMsg != "" {
+		errVal = errMsg
+	}
+	_, err := s.db.Exec(`UPDATE auto_bid_logs SET status = $1, price_eur = $2, error = $3 WHERE monitor_id = $4 AND item_id = $5`, status, priceVal, errVal, monitorID, itemID)
+	return err
+}
+

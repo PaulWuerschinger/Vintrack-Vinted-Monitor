@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"vintrack-worker/internal/cache"
+	"vintrack-worker/internal/autobid"
 	"vintrack-worker/internal/database"
 	"vintrack-worker/internal/proxy"
 	"vintrack-worker/internal/scraper"
@@ -27,6 +28,10 @@ func main() {
 	defer store.Close()
 
 	engine := scraper.NewEngine(store, proxyManager)
+	if svcURL := os.Getenv("VINTED_SERVICE_URL"); svcURL != "" {
+		engine.SetAutoBid(autobid.NewService(store, svcURL))
+		log.Printf("Auto-bid enabled (vinted-service: %s)", svcURL)
+	}
 	mgr := scraper.NewManager(store, engine)
 
 	ctx, cancel := context.WithCancel(context.Background())
