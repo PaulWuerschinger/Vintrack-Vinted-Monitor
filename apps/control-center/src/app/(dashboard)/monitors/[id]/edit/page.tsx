@@ -41,6 +41,9 @@ type MonitorData = {
   allowed_countries: string | null;
   discord_webhook: string | null;
   proxy_group_id: number | null;
+  auto_bid_enabled: boolean;
+  auto_bid_discount_pct: number | null;
+  auto_bid_max_price: string | null;
 };
 
 export default function EditMonitorPage() {
@@ -67,6 +70,9 @@ export default function EditMonitorPage() {
   const [selectedProxyGroup, setSelectedProxyGroup] = useState<string>("");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [autoBidEnabled, setAutoBidEnabled] = useState(false);
+  const [autoBidDiscountPct, setAutoBidDiscountPct] = useState("");
+  const [autoBidMaxPrice, setAutoBidMaxPrice] = useState("");
   const [loading, setLoading] = useState(true);
 
   const handleTestWebhook = async () => {
@@ -133,6 +139,9 @@ export default function EditMonitorPage() {
             m.proxy_group_id ? m.proxy_group_id.toString() : "server"
           );
           setWebhookUrl(m.discord_webhook || "");
+        setAutoBidEnabled(!!m.auto_bid_enabled);
+        setAutoBidDiscountPct(m.auto_bid_discount_pct != null ? String(m.auto_bid_discount_pct) : "");
+        setAutoBidMaxPrice(m.auto_bid_max_price != null ? String(m.auto_bid_max_price) : "");
         }
         setProxyGroups(proxyData.groups || []);
         setUserRole(proxyData.role || "free");
@@ -462,6 +471,67 @@ export default function EditMonitorPage() {
                   <Send className="w-4 h-4" />
                   {isTestingWebhook ? "Testing..." : "Test"}
                 </Button>
+              </div>
+            </div>
+
+
+            <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <Label htmlFor="auto_bid_enabled" className="text-[13px] font-medium flex items-center gap-2">
+                    Auto-Bid
+                    <span className="text-[10px] uppercase tracking-wide rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 px-1.5 py-0.5 border border-blue-200 dark:border-blue-500/25">Beta</span>
+                  </Label>
+                  <span className="text-[11px] text-muted-foreground">Sendet automatisch ein Angebot auf neue Treffer (max 20 Bids/Tag).</span>
+                </div>
+                <input
+                  type="checkbox"
+                  id="auto_bid_enabled"
+                  name="auto_bid_enabled"
+                  checked={autoBidEnabled}
+                  onChange={(e) => setAutoBidEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+              </div>
+              {autoBidEnabled && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="auto_bid_discount_pct" className="text-[11px] text-muted-foreground">Rabatt %</Label>
+                    <Input
+                      id="auto_bid_discount_pct"
+                      name="auto_bid_discount_pct"
+                      type="number"
+                      min={1}
+                      max={99}
+                      placeholder="20"
+                      value={autoBidDiscountPct}
+                      onChange={(e) => setAutoBidDiscountPct(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="auto_bid_max_price" className="text-[11px] text-muted-foreground">Max Gebot EUR</Label>
+                    <Input
+                      id="auto_bid_max_price"
+                      name="auto_bid_max_price"
+                      type="number"
+                      step="0.01"
+                      min={0.01}
+                      placeholder="Kein Limit"
+                      value={autoBidMaxPrice}
+                      onChange={(e) => setAutoBidMaxPrice(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-medium text-muted-foreground flex items-center gap-2">
+                    Auto-Buy
+                    <span className="text-[10px] uppercase tracking-wide rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 px-1.5 py-0.5 border border-amber-200 dark:border-amber-500/25">Coming Soon</span>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">Direktkauf sobald Item matched.</span>
+                </div>
+                <input type="checkbox" disabled className="h-4 w-4 rounded border-input opacity-50" />
               </div>
             </div>
 
