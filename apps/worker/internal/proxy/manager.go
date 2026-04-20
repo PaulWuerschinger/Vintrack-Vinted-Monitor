@@ -92,6 +92,25 @@ func parseProxyLine(line string) string {
 }
 
 func Load(filepath string) (*Manager, error) {
+	// Prefer PROXY_LIST env var (comma-separated) for cloud deploys
+	if envList := os.Getenv("PROXY_LIST"); envList != "" {
+		var proxies []string
+		var skipped int
+		for _, line := range strings.Split(envList, ",") {
+			p := parseProxyLine(line)
+			if p != "" {
+				proxies = append(proxies, p)
+			} else if strings.TrimSpace(line) != "" {
+				skipped++
+			}
+		}
+		if skipped > 0 {
+			log.Printf("⚠ Skipped %d invalid proxy lines from PROXY_LIST env", skipped)
+		}
+		log.Printf("Loaded %d valid proxies from PROXY_LIST env", len(proxies))
+		return &Manager{proxies: proxies}, nil
+	}
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
