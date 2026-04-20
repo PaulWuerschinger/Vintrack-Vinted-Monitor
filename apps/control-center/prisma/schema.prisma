@@ -83,6 +83,11 @@ model monitors {
 
   proxy_group_id Int?
   proxy_group    proxy_groups? @relation(fields: [proxy_group_id], references: [id], onDelete: SetNull)
+
+  auto_bid_enabled      Boolean  @default(false)
+  auto_bid_discount_pct Int?
+  auto_bid_max_price    Decimal? @db.Decimal(10, 2)
+  auto_bid_logs         auto_bid_logs[]
 }
 
 model items {
@@ -120,4 +125,20 @@ model proxy_groups {
   bandwidth_reset_at  DateTime? @db.Timestamp(6)
   created_at          DateTime? @default(now()) @db.Timestamp(6)
   monitors            monitors[]
+}
+
+model auto_bid_logs {
+  id         Int      @id @default(autoincrement())
+  monitor_id Int
+  monitor    monitors @relation(fields: [monitor_id], references: [id], onDelete: Cascade)
+  user_id    String
+  item_id    BigInt
+  status     String
+  price_eur  Decimal? @db.Decimal(10, 2)
+  error      String?
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([monitor_id, item_id])
+  @@index([user_id, created_at])
+  @@map("auto_bid_logs")
 }
