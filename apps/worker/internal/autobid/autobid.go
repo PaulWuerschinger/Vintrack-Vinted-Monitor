@@ -24,13 +24,15 @@ const MaxBidsPerUserPerDay = 20
 type Service struct {
 	db         *database.Store
 	serviceURL string
+	apiKey     string
 	httpClient *http.Client
 }
 
-func NewService(db *database.Store, serviceURL string) *Service {
+func NewService(db *database.Store, serviceURL, apiKey string) *Service {
 	return &Service{
 		db:         db,
 		serviceURL: strings.TrimRight(serviceURL, "/"),
+		apiKey:     apiKey,
 		httpClient: &http.Client{Timeout: 20 * time.Second},
 	}
 }
@@ -127,6 +129,9 @@ func (s *Service) tryBid(ctx context.Context, m model.Monitor, it model.Item, vI
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-User-Id", m.UserID)
+	if s.apiKey != "" {
+		req.Header.Set("X-API-Key", s.apiKey)
+	}
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {

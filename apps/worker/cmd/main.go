@@ -29,7 +29,7 @@ func main() {
 
 	engine := scraper.NewEngine(store, proxyManager)
 	if svcURL := os.Getenv("VINTED_SERVICE_URL"); svcURL != "" {
-		engine.SetAutoBid(autobid.NewService(store, svcURL))
+		engine.SetAutoBid(autobid.NewService(store, svcURL, os.Getenv("VINTED_SERVICE_API_KEY")))
 		log.Printf("Auto-bid enabled (vinted-service: %s)", svcURL)
 	}
 	mgr := scraper.NewManager(store, engine)
