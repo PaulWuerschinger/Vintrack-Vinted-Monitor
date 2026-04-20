@@ -5,6 +5,8 @@ import { Search } from "lucide-react";
 import { ItemCard, ItemCardSkeleton, type ItemData } from "@/components/monitors/item-card";
 import { useMonitorLiveContext } from "@/components/monitors/monitor-live-context";
 
+const POLL_INTERVAL_MS = 1000;
+
 export function LiveFeed({ monitorId }: { monitorId: number }) {
   const [items, setItems] = useState<ItemData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,21 +14,55 @@ export function LiveFeed({ monitorId }: { monitorId: number }) {
   const seenItemIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const fetchItems = async () => {
+    let cancelled = false;
+
+    const fetchItems = async (isInitial: boolean) => {
       try {
-        const res = await fetch(`/api/monitors/${monitorId}/items`);
-        if (res.ok) {
-          const data: ItemData[] = await res.json();
+        const res = await fetch(`/api/monitors/${monitorId}/items`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data: ItemData[] = await res.json();
+
+        if (isInitial) {
           seenItemIds.current = new Set(data.map((item) => String(item.id)));
-          setItems(data.map((i) => ({ ...i, isLive: false })));
+          setItems(data.map((i) => ({ ...i, id: String(i.id), isLive: false })));
+          return;
+        }
+
+        const fresh: ItemData[] = [];
+        for (const item of data) {
+          const id = String(item.id);
+          if (!seenItemIds.current.has(id)) {
+            seenItemIds.current.add(id);
+            fresh.push({ ...item, id, isLive: true });
+            incrementItemCount();
+          }
+        }
+        if (fresh.length === 0) return;
+
+        setItems((prev) => [...fresh, ...prev]);
+
+        for (const f of fresh) {
+          const freshId = f.id;
+          setTimeout(() => {
+            setItems((curr) =>
+              curr.map((item) => (String(item.id) === String(freshId) ? { ...item, isLive: false } : item))
+            );
+          }, 10000);
         }
       } catch (err) {
-        console.error("Fetch error", err);
-      } finally {
-        setLoading(false);
+        console.error("Poll error", err);
       }
     };
-    fetchItems();
+
+    fetchItems(true).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    const interval = setInterval(() => fetchItems(false), POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [incrementItemCount, monitorId]);
 
   useEffect(() => {
