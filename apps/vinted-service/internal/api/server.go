@@ -36,6 +36,7 @@ func (s *Server) Start() error {
 
 	mux.HandleFunc("POST /api/items/like", s.handleLike)
 	mux.HandleFunc("POST /api/items/unlike", s.handleUnlike)
+	mux.HandleFunc("POST /api/items/buy", s.handleBuy)
 	mux.HandleFunc("GET /api/items/liked", s.handleLikedItems)
 	mux.HandleFunc("GET /api/items/favorites", s.handleFavorites)
 	mux.HandleFunc("GET /api/items/wardrobe", s.handleWardrobe)
@@ -1101,3 +1102,32 @@ func (s *Server) handleShipmentLabel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write(pdf)
 }
+
+func (s *Server) handleBuy(w http.ResponseWriter, r *http.Request) {
+	sess, client, ok := s.getSessionAndClient(r, w)
+	if !ok {
+		return
+	}
+
+	var req itemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ItemID == 0 {
+		writeError(w, "item_id is required", 400)
+		return
+	}
+
+	result, err := client.BuyItem(req.ItemID)
+	if err != nil {
+		writeError(w, "buy failed: "+err.Error(), 502)
+		return
+	}
+
+	s.persistIfRefreshed(sess, client)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"success":        true,
+		"transaction_id": result.TransactionID,
+		"status":         result.Status,
+		"checkout_url":   result.CheckoutURL,
+	})
+}
+
