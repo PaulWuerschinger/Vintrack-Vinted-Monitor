@@ -16,6 +16,7 @@ import (
 	"vintrack-worker/internal/database"
 	"vintrack-worker/internal/discord"
 	"vintrack-worker/internal/model"
+	"vintrack-worker/internal/autobid"
 	"vintrack-worker/internal/proxy"
 
 	http "github.com/bogdanfinn/fhttp"
@@ -26,6 +27,7 @@ const maxAPIResponseBytes = 2 * 1024 * 1024 // 2 MB
 type Engine struct {
 	db           *database.Store
 	serverProxy  *proxy.Manager
+	autobid      *autobid.Service
 	enrichSeller bool
 	poolSize     int
 	pools        map[string]*ClientPool
@@ -33,6 +35,8 @@ type Engine struct {
 	enrichers    map[string]*SellerEnricher
 	enrichersMu  sync.RWMutex
 }
+
+func (e *Engine) SetAutoBid(svc *autobid.Service) { e.autobid = svc }
 
 func NewEngine(db *database.Store, pm *proxy.Manager) *Engine {
 	enrich := os.Getenv("ENRICH_SELLER_INFO") != "false"
@@ -425,6 +429,9 @@ func (e *Engine) MonitorTask(ctx context.Context, m model.Monitor) {
 		initialized = true
 
 		go e.processItems(ctx, builtItems, processItems, m.ID, m.DiscordWebhook.String, m.WebhookActive, m.Name, proxySource, enricher, domain, m.AllowedCountries, true)
+		if e.autobid != nil && m.AutoBidEnabled {
+			go e.autobid.HandleNewItems(ctx, m, builtItems, processItems)
+		}
 
 		if remaining := intervalDuration - time.Since(cycleStart); remaining > 0 {
 			time.Sleep(remaining)

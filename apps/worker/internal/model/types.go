@@ -29,6 +29,10 @@ type Monitor struct {
 	ProxyGroupTxBytes    int64
 	ProxyGroupResetAt    sql.NullTime
 	Proxies              sql.NullString
+	UserID               string
+	AutoBidEnabled       bool
+	AutoBidDiscountPct   sql.NullInt32
+	AutoBidMaxPrice      sql.NullString
 	CreatedAt            time.Time
 }
 
