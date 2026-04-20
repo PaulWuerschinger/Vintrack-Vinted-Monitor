@@ -26,6 +26,11 @@ export async function createMonitor(formData: FormData) {
   const allowedCountries = (formData.get("allowed_countries") as string) || null;
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
   const proxyGroupRaw = formData.get("proxy_group_id") as string;
+  const autoBidEnabled = formData.get("auto_bid_enabled") === "on" || formData.get("auto_bid_enabled") === "true";
+  const autoBidDiscountRaw = formData.get("auto_bid_discount_pct");
+  const autoBidDiscountPct = autoBidDiscountRaw ? Math.max(1, Math.min(99, Number(autoBidDiscountRaw))) : null;
+  const autoBidMaxRaw = formData.get("auto_bid_max_price");
+  const autoBidMaxPrice = autoBidMaxRaw ? Math.max(0.01, Number(autoBidMaxRaw)) : null;
 
   const normalizedName = name?.trim() ?? "";
   const normalizedQuery = query?.trim() ?? "";
@@ -87,6 +92,9 @@ export async function createMonitor(formData: FormData) {
       proxy_group_id: proxyGroupId,
       status: "active",
       webhook_active: urlToSave ? true : false,
+      auto_bid_enabled: autoBidEnabled,
+      auto_bid_discount_pct: autoBidEnabled ? autoBidDiscountPct : null,
+      auto_bid_max_price: autoBidEnabled && autoBidMaxPrice != null ? autoBidMaxPrice.toFixed(2) : null,
     },
   });
 
@@ -141,6 +149,11 @@ export async function updateMonitor(id: number, formData: FormData) {
   const returnTo = (formData.get("return_to") as string) || "detail";
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
   const proxyGroupRaw = formData.get("proxy_group_id") as string;
+  const autoBidEnabled = formData.get("auto_bid_enabled") === "on" || formData.get("auto_bid_enabled") === "true";
+  const autoBidDiscountRaw = formData.get("auto_bid_discount_pct");
+  const autoBidDiscountPct = autoBidDiscountRaw ? Math.max(1, Math.min(99, Number(autoBidDiscountRaw))) : null;
+  const autoBidMaxRaw = formData.get("auto_bid_max_price");
+  const autoBidMaxPrice = autoBidMaxRaw ? Math.max(0.01, Number(autoBidMaxRaw)) : null;
 
   const normalizedName = name?.trim() ?? "";
   const normalizedQuery = query?.trim() ?? "";
@@ -199,6 +212,9 @@ export async function updateMonitor(id: number, formData: FormData) {
       discord_webhook: urlToSave,
       proxy_group_id: proxyGroupId,
       ...(urlToSave ? { webhook_active: true } : {}),
+      auto_bid_enabled: autoBidEnabled,
+      auto_bid_discount_pct: autoBidEnabled ? autoBidDiscountPct : null,
+      auto_bid_max_price: autoBidEnabled && autoBidMaxPrice != null ? autoBidMaxPrice.toFixed(2) : null,
     },
   });
 
@@ -231,6 +247,11 @@ export async function updateMonitorAndReturn(id: number, formData: FormData) {
   const returnTo = (formData.get("return_to") as string) || "detail";
   const discordWebhook = (formData.get("discord_webhook") as string) || null;
   const proxyGroupRaw = formData.get("proxy_group_id") as string;
+  const autoBidEnabled = formData.get("auto_bid_enabled") === "on" || formData.get("auto_bid_enabled") === "true";
+  const autoBidDiscountRaw = formData.get("auto_bid_discount_pct");
+  const autoBidDiscountPct = autoBidDiscountRaw ? Math.max(1, Math.min(99, Number(autoBidDiscountRaw))) : null;
+  const autoBidMaxRaw = formData.get("auto_bid_max_price");
+  const autoBidMaxPrice = autoBidMaxRaw ? Math.max(0.01, Number(autoBidMaxRaw)) : null;
 
   const normalizedName = name?.trim() ?? "";
   const normalizedQuery = query?.trim() ?? "";
@@ -288,6 +309,9 @@ export async function updateMonitorAndReturn(id: number, formData: FormData) {
       discord_webhook: urlToSave,
       proxy_group_id: proxyGroupId,
       ...(urlToSave ? { webhook_active: true } : {}),
+      auto_bid_enabled: autoBidEnabled,
+      auto_bid_discount_pct: autoBidEnabled ? autoBidDiscountPct : null,
+      auto_bid_max_price: autoBidEnabled && autoBidMaxPrice != null ? autoBidMaxPrice.toFixed(2) : null,
     },
   });
 
