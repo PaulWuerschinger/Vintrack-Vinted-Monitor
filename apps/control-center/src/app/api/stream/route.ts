@@ -4,6 +4,8 @@ import { auth } from '@/auth';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -24,10 +26,17 @@ export async function GET(req: NextRequest) {
 
   const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
-  req.signal.addEventListener('abort', () => {
-    redis.quit();
-    writer.close();
-  });
+  writer.write(encoder.encode(': connected\n\n')).catch(() => {});
+  const keepalive = setInterval(() => {
+    writer.write(encoder.encode(': keepalive\n\n')).catch(() => {});
+  }, 15000);
+
+  const cleanup = () => {
+    clearInterval(keepalive);
+    redis.quit().catch(() => {});
+    writer.close().catch(() => {});
+  };
+  req.signal.addEventListener('abort', cleanup);
 
   redis.subscribe('vinted:new_items', (err) => {
     if (err) console.error('Redis subscribe error:', err);
@@ -46,7 +55,7 @@ export async function GET(req: NextRequest) {
             monitor_name: monitorNames.get(monitorId) || parsed.monitor_name || null,
           });
           const data = `data: ${enrichedPayload}\n\n`;
-          writer.write(encoder.encode(data));
+          writer.write(encoder.encode(data)).catch(() => {});
         }
       } catch {
         // Skip malformed messages
@@ -59,6 +68,7 @@ export async function GET(req: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   });
 }
